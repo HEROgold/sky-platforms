@@ -7,10 +7,10 @@ The game starts on a space platform orbiting a new space location, the Drift. Th
 Decided on 2026-11-15:
 
 - New space location "the Drift", internal name `sky-drift`, with all three asteroid types (metallic, carbonic, oxide). The game starts on one platform orbiting it.
-- Starting kit in the hub: 4 asteroid collectors, 4 crushers, 4 assemblers, 4 furnaces, 2 labs, solar panels, inserters, belts, space platform foundation, 1 `mech-armor` and 1 Thud damper.
+- Starting kit in the hub: 4 asteroid collectors, 4 crushers, 4 assemblers, 4 furnaces, 2 labs, solar panels, inserters, belts, space platform foundation and 1 Thud damper. The character wears the `mech-armor`, not the hub.
 - New asteroid crushing recipes for copper ore and stone, available from the start, at low yields.
 - `space-platform-thruster` costs red science only. Its fuel and oxidizer chain is reachable with red science.
-- `thud-orbital-ascent` and `space-platform` start researched.
+- Start researched: `space-platform`, `thud-orbital-ascent`, `steam-power`, `electronics`, `automation-science-pack` and `automation`.
 - Dependencies: Thud (required), Space Age.
 - Out of scope: hiding vanilla planets from the star map (see #9).
 
@@ -21,18 +21,18 @@ Decided on 2026-11-15:
 ## Behaviour
 
 1. A new game creates one platform at game start, owned by the first player's force, orbiting `sky-drift`.
-2. The platform hub holds the kit: 4 `asteroid-collector`, 4 `crusher`, 4 `assembling-machine-1`, 4 `stone-furnace`, 2 `lab`, `solar-panel` x TBD, `inserter` x TBD, `transport-belt` x TBD, `space-platform-foundation` x TBD, 1 `mech-armor`, 1 `thud-inertial-damper`. Exact amounts are in Open numbers.
-3. The first player's character wears the `mech-armor`. The kit's `mech-armor` is in the hub, not a second copy. See statement 4.
-4. The mod inserts the armor into the character's armor inventory (`defines.inventory.character_armor`) and not into the hub, so the kit holds exactly one `mech-armor` in total. `TBD (proposed: the one armor goes on the first player; the hub gets none)`.
+2. The platform hub holds the kit: 4 `asteroid-collector`, 4 `crusher`, 4 `assembling-machine-1`, 4 `stone-furnace`, 2 `lab`, `solar-panel` x 20, `inserter` x 40, `transport-belt` x 100, `space-platform-foundation` x 50, 1 `thud-inertial-damper`. The `sky-platforms-kit-scale` setting multiplies the panels, inserters, belts and foundations. Amounts are in Control stage, Kit.
+3. Each player's character wears one `mech-armor` from its first spawn. The hub holds none. See statement 4.
+4. The mod inserts the armor into the character's armor inventory (`defines.inventory.character_armor`), not into the hub. start-and-respawn gives the armor (its Control stage, `give_armor`).
 5. The player stands on the platform, not on Nauvis (via #6, slice 1).
 6. The platform orbits `sky-drift` (`platform.space_location.name == "sky-drift"`). It is created at Nauvis and moved to `sky-drift` in the same tick, because `create_space_platform` only accepts planets (tested).
 7. Asteroid collectors on the platform receive chunks of all three types: metallic, carbonic and oxide.
-8. The recipes `sky-copper-asteroid-crushing` and `sky-stone-asteroid-crushing` are enabled in a new game without research. A crusher can run them.
-9. A crusher running `sky-copper-asteroid-crushing` outputs fewer copper ore per chunk than the metallic recipe outputs iron ore (20).
-10. Technologies `space-platform` and `thud-orbital-ascent` are researched at game start. The `create-space-platform` research trigger of `space-platform` does not need to fire.
+8. The recipes `sky-metallic-crushing-copper` and `sky-oxide-crushing-stone` are enabled in a new game without research. A crusher can run them.
+9. A crusher running `sky-metallic-crushing-copper` outputs fewer copper ore per chunk than the metallic recipe outputs iron ore (20).
+10. The six techs in Starting research are researched at game start. The `create-space-platform` research trigger of `space-platform` does not need to fire.
 11. `space-platform-thruster` needs only `automation-science-pack`. It has no `space-science-pack` prerequisite and no `space-science-pack` in its ingredients.
-12. After researching `space-platform-thruster` with red science, the player can craft the `chemical-plant`, run `ice-melting`, `thruster-fuel` and `thruster-oxidizer`, and craft a `thruster`.
-13. The thruster chain needs no oil, no plastic, and no item that a planet gives. Carbon comes from carbonic chunks, iron ore from metallic chunks, water from ice.
+12. After researching `space-platform-thruster` with red science, the player can craft the `chemical-plant`, run `ice-melting`, `thruster-fuel` and `thruster-oxidizer`, and craft a `sky-salvage-thruster`. The vanilla `thruster` stays unchanged. It is the upgrade, craftable once the player has processing units and electric engine units, which need oil.
+13. The salvage thruster chain needs no oil, no plastic, and no item that a planet gives. Carbon comes from carbonic chunks, iron ore from metallic chunks, water from ice.
 14. Nauvis still exists as a surface. No player stays on it (see Control stage, "Leaving Nauvis").
 15. The game does not show the freeplay intro, the crash site, or the freeplay starting items.
 
@@ -63,9 +63,11 @@ Reference: `solar-system-edge` is a plain `space-location` with these fields at 
 Asteroid spawn definitions for orbit: Space Age builds them with `asteroid_util.spawn_definitions(data, planet)`, passing a `planet` argument to get one fixed probability per asteroid (`__space-age__/prototypes/planet/asteroid-spawn-definitions.lua:368-441`). With `planet ~= nil` the helper reads `probability_on_range_*` at that planet's position and emits `{ asteroid, probability, speed, angle_when_stopped }` entries. For the Drift, write the entries by hand and do not use the helper, because the helper's tables are keyed to Space Age planets. Proposed entries, copied in shape from the helper output:
 
 - `metallic-asteroid-chunk`, `carbonic-asteroid-chunk`, `oxide-asteroid-chunk`, each `type = "asteroid-chunk"`, `speed = 1 * meter/second` (the helper's `standard_speed`), `angle_when_stopped = 1` (the helper's `chunk_angle`).
-- Chunk probability `TBD (proposed: 0.0125 each)`, which equals `nauvis_chunks` (asteroid-spawn-definitions.lua:17). This is the highest vanilla orbit rate. A starting platform with 4 collectors needs it.
-- Ratio `TBD (proposed: 3 : 2 : 1 metallic : carbonic : oxide)`, which equals `nauvis_ratio` (line 10). Metallic feeds iron and now copper, carbonic feeds thruster fuel, oxide feeds ice.
-- Small, medium and big asteroids: none at the Drift. `TBD (proposed: none in 0.x)`. Collectors then catch only chunks, and no turret defence is needed at the start.
+- Chunk probability 0.0125 each, which equals `nauvis_chunks` (asteroid-spawn-definitions.lua:17). This is the highest vanilla orbit rate. A starting platform with 4 collectors needs it.
+- Ratio 3 : 2 : 1 metallic : carbonic : oxide, which equals `nauvis_ratio` (line 10). Metallic feeds iron and now copper, carbonic feeds thruster fuel, oxide feeds ice.
+- Small, medium and big asteroids: none at the Drift. Collectors then catch only chunks, and no turret defence is needed at the start.
+
+Needs a play test, since the Nauvis orbit rates may be too generous for the Drift.
 
 Space connections are not defined here. Without a `space-connection`, a platform at the Drift cannot leave. Connections belong to the planets spec (#9). The Drift is reachable as the start. Note this as a dependency for #9.
 
@@ -74,7 +76,7 @@ Space connections are not defined here. Without a `space-connection`, a platform
 ```lua
 {
   type = "recipe",
-  name = "sky-copper-asteroid-crushing",
+  name = "sky-metallic-crushing-copper",
   categories = {"crushing"},
   subgroup = "space-crushing",
   order = "b-b-a",
@@ -82,11 +84,11 @@ Space connections are not defined here. Without a `space-connection`, a platform
   enabled = true,
   energy_required = 2,
   ingredients = {{ type = "item", name = "metallic-asteroid-chunk", amount = 1, ignored_by_stats = 1 }},
-  results = {{ type = "item", name = "copper-ore", amount = 6 }},   -- TBD (proposed: 6)
+  results = {{ type = "item", name = "copper-ore", amount = 6 }},
 }
 {
   type = "recipe",
-  name = "sky-stone-asteroid-crushing",
+  name = "sky-oxide-crushing-stone",
   categories = {"crushing"},
   subgroup = "space-crushing",
   order = "b-b-b",
@@ -94,13 +96,13 @@ Space connections are not defined here. Without a `space-connection`, a platform
   enabled = true,
   energy_required = 2,
   ingredients = {{ type = "item", name = "oxide-asteroid-chunk", amount = 1, ignored_by_stats = 1 }},
-  results = {{ type = "item", name = "stone", amount = 6 }},        -- TBD (proposed: 6)
+  results = {{ type = "item", name = "stone", amount = 6 }},
 }
 ```
 
 Shape follows the vanilla recipes `metallic-asteroid-crushing` (energy 2, `categories = {"crushing"}`, `auto_recycle = false`, `enabled = false`) at `__space-age__/prototypes/recipe.lua:890-910`. Vanilla values for comparison: metallic chunk gives 20 iron ore, carbonic gives 10 carbon, oxide gives 5 ice. Advanced recipes (late game) give 10 iron and 4 copper from a metallic chunk, 5 carbon and 2 sulfur from carbonic, 3 ice and 2 calcite from oxide. Copper at 6 per chunk is below the advanced 10 + 4 mix on total and well below the iron yield. The mod does not change the vanilla advanced recipes.
 
-Stone from oxide is a proposal. The brief names no source chunk. Alternatives are listed in Open numbers.
+Stone comes from oxide chunks. Carbonic chunks would compete with thruster fuel for carbon.
 
 ### Technologies
 
@@ -116,14 +118,17 @@ Change (in `data-updates.lua`, after Space Age loads):
 
 ```lua
 local tech = data.raw.technology["space-platform-thruster"]
-tech.prerequisites = { "steel-processing", "electronics" }   -- TBD, see below
+tech.prerequisites = { "steel-processing", "electronics" }
 tech.unit = {
-  count = 200,                                               -- TBD (proposed: 200)
+  count = 200,
   ingredients = { { "automation-science-pack", 1 } },
-  time = 30,                                                 -- TBD (proposed: 30)
+  time = 30,
 }
 table.insert(tech.effects, { type = "unlock-recipe", recipe = "chemical-plant" })
+table.insert(tech.effects, { type = "unlock-recipe", recipe = "sky-salvage-thruster" })
 ```
+
+The vanilla effects already include `thruster-fuel`, `thruster-oxidizer` and `ice-melting`, so the tech keeps them. The tech adds only the chemical plant and the salvage thruster.
 
 #### What the thruster chain needs
 
@@ -145,10 +150,20 @@ I checked which techs unlock each piece (Factorio 2.1.24 files):
 The minimum change has three parts.
 
 1. **Chemical plant.** Add `{ type = "unlock-recipe", recipe = "chemical-plant" }` to `space-platform-thruster`. The chemical plant is the only machine for the `chemistry` category used by `thruster-fuel` and `thruster-oxidizer`, and its only unlock is `oil-processing`, which needs crude oil. Leave `oil-processing` unchanged. Its own unlock of the same recipe stays valid. Whether the chemical plant's `surface_conditions` allow a platform surface is not checked. The thruster recipes require `gravity` min 0, max 0 (`recipe.lua:1105-1112`), which a platform meets.
-2. **Thruster recipe.** The `thruster` recipe needs `processing-unit` and `electric-engine-unit`, both locked behind chemical science and oil. Red science alone would research the tech and still leave the thruster uncraftable. Override the recipe ingredients: `TBD (proposed: steel-plate 10, electronic-circuit 10, iron-gear-wheel 10, pipe 5)`. This keeps the steel-and-electronics feel and needs only items that red-science techs and the kit unlock. This changes a vanilla recipe. It is the minimum change that makes statement 12 true. The alternative of unlocking `processing-unit` and `electric-engine-unit` drags in plastic, sulfur and lubricant, which need oil.
-3. **Prerequisites.** `steel-processing` (red) is needed for steel. `electronics` is a trigger tech (craft 10 copper plate) and gets set researched at start (see Control stage). The prerequisite list `{ "steel-processing", "electronics" }` is a proposal. `steel-processing` must be researchable with red science in a new game, and `automation-science-pack` (the tech that unlocks the red science recipe) must be researched at start (Control stage).
+2. **Salvage thruster.** A new item, recipe and entity `sky-salvage-thruster` gives an early thruster that needs red-science items only (see Salvage thruster in Data stage). The vanilla `thruster` recipe is not changed. It needs `processing-unit` and `electric-engine-unit`, both locked behind chemical science and oil, so the player crafts it later, as the upgrade. Its ingredients drag in plastic, sulfur and lubricant, which need oil. The salvage thruster avoids that path.
+3. **Prerequisites.** `steel-processing` (red) is needed for steel. `electronics` is a trigger tech (craft 10 copper plate) and gets set researched at start (see Control stage). The prerequisite list is `{ "steel-processing", "electronics" }`. `steel-processing` must be researchable with red science in a new game, and `automation-science-pack` (the tech that unlocks the red science recipe) must be researched at start (Control stage).
 
 Techs that list `space-platform-thruster` as a prerequisite (`technology.lua:383, 415, 451`) are unchanged. They keep their space science costs.
+
+### Salvage thruster
+
+`sky-salvage-thruster` is the early thruster. It has three parts:
+
+- Entity: a copy of the vanilla `thruster` entity (`data.raw.thruster.thruster`), renamed, with lower performance. Performance is `TBD (proposed: 50% of the vanilla thruster's max performance)`. The field name is from memory and not checked, so confirm it in slice 3.
+- Item: `sky-salvage-thruster`, placed as the entity above.
+- Recipe `sky-salvage-thruster`: 10 `steel-plate`, 10 `electronic-circuit`, 10 `iron-gear-wheel`, 5 `pipe`.
+
+The vanilla `thruster` recipe and entity keep their values. `space-platform-thruster` unlocks both recipes.
 
 ### Thud
 
@@ -236,15 +251,15 @@ local KIT = {
   { name = "assembling-machine-1", count = 4 },
   { name = "stone-furnace", count = 4 },
   { name = "lab", count = 2 },
-  { name = "solar-panel", count = 20 },               -- TBD
-  { name = "inserter", count = 40 },                  -- TBD
-  { name = "transport-belt", count = 100 },           -- TBD
-  { name = "space-platform-foundation", count = 50 }, -- TBD
+  { name = "solar-panel", count = 20 },
+  { name = "inserter", count = 40 },
+  { name = "transport-belt", count = 100 },
+  { name = "space-platform-foundation", count = 50 },
   { name = "thud-inertial-damper", count = 1 },
 }
 ```
 
-`mech-armor` goes into the first character's armor slot via `get_inventory(defines.inventory.character_armor).insert("mech-armor")` after placement. The hub keeps one copy only if a later spec adds one. `TBD (proposed: character gets it, hub holds none)`.
+The solar panel, inserter, belt and foundation counts are multiplied by `sky-platforms-kit-scale` (see Settings). The kit holds no `mech-armor`. start-and-respawn gives one armor to each character on its first spawn.
 
 Hub inventory size limits what fits. `hub.insert` returns the count inserted. Compare to the request. If a stack does not fit, print one message in the log and continue. The hub's slot count is not looked up here, so the kit total is checked in game (slice 1).
 
@@ -252,9 +267,8 @@ Hub inventory size limits what fits. `hub.insert` returns the count inserted. Co
 
 `set_start_research(force)` sets `force.technologies[name].researched = true` for each name in this list:
 
-- `space-platform` (decided).
-- `thud-orbital-ascent` (decided).
-- `electronics`, `steam-power`, `automation-science-pack`, `automation`: needed so labs get red science. `TBD (proposed: exactly these four)`. The red science recipe is unlocked by `automation-science-pack` (`base/technology.lua:87-105`), a trigger tech that needs `steam-power` and `electronics`. Without them the player cannot craft red science. The `automation` tech name is from memory and not checked, so confirm each name in `prototypes` before shipping.
+- `space-platform`, `thud-orbital-ascent` (decided).
+- `electronics`, `steam-power`, `automation-science-pack`, `automation` (decided): needed so labs get red science. The red science recipe is unlocked by `automation-science-pack` (`base/technology.lua:87-105`), a trigger tech that needs `steam-power` and `electronics`. Without them the player cannot craft red science. The `automation` tech name is from memory and not checked, so confirm each name in `prototypes` before shipping.
 
 `LuaTechnology.researched` is a read and write attribute in the runtime API. This is from memory, so confirm it in slice 1.
 
@@ -271,9 +285,9 @@ The game creates Nauvis as the first surface and gives each new player a charact
 
 | Name | Type | Default | Use |
 | --- | --- | --- | --- |
-| `sky-platforms-copper-crush-yield` | startup, int, min 1, max 20 | 6 `TBD (proposed: 6)` | Copper ore per metallic chunk in `sky-copper-asteroid-crushing`. |
-| `sky-platforms-stone-crush-yield` | startup, int, min 1, max 20 | 6 `TBD (proposed: 6)` | Stone per oxide chunk in `sky-stone-asteroid-crushing`. |
-| `sky-platforms-thruster-tech-count` | startup, int, min 10, max 1000 | 200 `TBD (proposed: 200)` | Red science units for `space-platform-thruster`. |
+| `sky-platforms-copper-crush-yield` | startup, int, min 1, max 20 | 6 | Copper ore per metallic chunk in `sky-metallic-crushing-copper`. |
+| `sky-platforms-stone-crush-yield` | startup, int, min 1, max 20 | 6 | Stone per oxide chunk in `sky-oxide-crushing-stone`. |
+| `sky-platforms-thruster-tech-count` | startup, int, min 10, max 1000 | 200 | Red science units for `space-platform-thruster`. |
 | `sky-platforms-kit-scale` | startup, double, min 0.5, max 4 | 1 | Multiplies the kit counts of solar panels, inserters, belts and foundation. |
 
 Startup settings, not runtime, because they change prototypes or the one-time kit.
@@ -281,14 +295,14 @@ Startup settings, not runtime, because they change prototypes or the one-time ki
 ## Storage and migrations
 
 - New saves: `on_init` creates `storage.bootstrap_done = false`.
-- Existing saves that add the mod: `bootstrap_done` is nil. `on_configuration_changed` sets it to `true` and does nothing else, because an existing game already has progress. The kit is never given to an existing save. `TBD (proposed: skip bootstrap on saves with any existing platform or tick > 0)`.
-- Migration file: None for 0.1.0 to 0.3.0. Slice 2 changes the start location for new games only.
+- Existing saves that add the mod: `bootstrap_done` is nil. `on_configuration_changed` sets it to `true` and does nothing else, because an existing game already has progress. The kit is never given to an existing save. Saves that already have a platform or are past tick 0 get no kit.
+- Migration files: slices 2 and 3 each need one. See the slices.
 
 ## Multiplayer and determinism
 
 - Bootstrap runs once, on the first `on_player_created` of the game, on all peers in the same tick with the same inputs.
 - The kit table is a fixed ordered array. Insert it in array order, never with `pairs` over a hash.
-- A player who joins after bootstrap skips it and goes straight to #6's `place_on_home`.
+- A player who joins after bootstrap skips it and goes straight to #6's `place_on_home`. That player also gets one `mech-armor` (start-and-respawn, Control stage).
 - Research flags are set in the same handler as the platform. Peers run the same order.
 - No randomness is used. Asteroid spawns are the engine's own and deterministic.
 - Risk: loading a save made before `bootstrap_done` existed. `on_configuration_changed` covers it (Storage and migrations).
@@ -296,14 +310,13 @@ Startup settings, not runtime, because they change prototypes or the one-time ki
 
 ## Slices
 
-- [ ] 1. Start on a platform with the kit
-- [ ] 2. Orbit the Drift
-- [ ] 3. Copper and stone crushing
-- [ ] 4. Red-science thruster chain
+- [ ] 1. Start in the Drift with the kit
+- [ ] 2. Copper and stone crushing
+- [ ] 3. Salvage thruster chain
 
-### Slice 1. Start on a platform with the kit
+### Slice 1. Start in the Drift with the kit
 
-This is the smallest installable thing. After it ships, a new game puts the player on a platform with the kit, armor on, labs and crushers ready, no crash site. The platform orbits Nauvis in this slice (verified call). Thud is a required dependency from here.
+This is the smallest installable thing. After it ships, a new game puts the player on a platform orbiting the Drift, with the kit, armor on, labs and crushers ready, no crash site. The platform is created at Nauvis and moved to `sky-drift` in the same tick (see Bootstrap). Thud is a required dependency from here.
 
 Acceptance criteria:
 
@@ -311,80 +324,65 @@ Acceptance criteria:
 - [ ] The player stands on a platform within 5 tiles of the hub (via #6 slice 1).
 - [ ] The hub holds 4 asteroid collectors, 4 crushers, 4 assemblers, 4 furnaces, 2 labs, solar panels, inserters, belts, foundation and 1 Thud damper.
 - [ ] The character wears `mech-armor` and can fly over `empty-space`.
-- [ ] `space-platform` and `thud-orbital-ascent` are researched. The four start techs are researched.
+- [ ] `data.raw["space-location"]["sky-drift"]` exists and loads headless.
+- [ ] `platform.space_location.name == "sky-drift"` after bootstrap. The platform never shows Nauvis as its location.
+- [ ] Within 10 minutes of play, a collector catches at least one chunk of each type.
+- [ ] The star map shows the Drift. Hiding other locations is not tested here.
+- [ ] The six start techs are researched.
 - [ ] The player can craft red science and research with a placed lab.
 - [ ] Every kit stack fits, or a log line names the stack that did not.
 - [ ] `emmylua_check` passes. A headless `factorio --create` run loads the mod with Space Age and Thud.
 
 Path to prod:
 
-- Target release: 0.1.0 (together with start-and-respawn slice 1).
+- Target release: 0.1.0 (together with start-and-respawn slices 1 and 2).
 - Save migration: no.
-- In-game test steps: 1. New game. 2. Check the hub inventory against the list. 3. Check armor and fly over space. 4. Open the technology screen and check the researched list. 5. Craft a red science pack. 6. Place a collector and a crusher.
-- Changelog line: "New games start on a space platform with a starting kit."
+- In-game test steps: 1. New game. 2. Check the hub inventory against the list. 3. Check armor and fly over space. 4. Open the technology screen and check the researched list. 5. Craft a red science pack. 6. Place a collector and a crusher. 7. Open the platform tab and read the location. 8. Run collectors for 10 minutes and check chunk types. 9. `/c game.print(game.forces.player.platforms[1].space_location.name)`.
+- Changelog line: "New games start on a space platform orbiting the Drift, with a starting kit."
 
-### Slice 2. Orbit the Drift
-
-After this ships, the platform orbits the Drift and its collectors catch metallic, carbonic and oxide chunks.
-
-Acceptance criteria:
-
-- [ ] `data.raw["space-location"]["sky-drift"]` exists and loads headless.
-- [ ] `platform.space_location.name == "sky-drift"` after bootstrap.
-- [ ] Within 10 minutes of play, a collector catches at least one chunk of each type.
-- [ ] The platform never shows Nauvis as its location.
-- [ ] The star map shows the Drift. Hiding other locations is not tested here.
-
-Path to prod:
-
-- Target release: 0.2.0.
-- Save migration: no. Saves from 0.1.0 keep their Nauvis orbit. `TBD (proposed: no automatic move)`.
-- In-game test steps: 1. New game. 2. Open the platform tab and read the location. 3. Run collectors for 10 minutes and check chunk types. 4. `/c game.print(game.forces.player.platforms[1].space_location.name)`.
-- Changelog line: "The start platform now orbits the Drift, a new space location with all three asteroid types."
-
-### Slice 3. Copper and stone crushing
+### Slice 2. Copper and stone crushing
 
 After this ships, a crusher turns metallic chunks into copper ore and oxide chunks into stone from the first minute.
 
 Acceptance criteria:
 
 - [ ] Both recipes are enabled in a new game without research.
-- [ ] A crusher set to `sky-copper-asteroid-crushing` outputs the configured copper ore per chunk.
-- [ ] A crusher set to `sky-stone-asteroid-crushing` outputs the configured stone per chunk.
+- [ ] A crusher set to `sky-metallic-crushing-copper` outputs the configured copper ore per chunk.
+- [ ] A crusher set to `sky-oxide-crushing-stone` outputs the configured stone per chunk.
 - [ ] Both yields are below the matching vanilla recipe yields (iron 20 for metallic).
 - [ ] Vanilla crushing recipes are unchanged.
 - [ ] The two startup settings change the yields.
 
 Path to prod:
 
-- Target release: 0.3.0.
-- Save migration: yes in effect, but handled with `migrations/0.3.0.lua`, which sets the two recipes enabled on every force (recipes from a new mod version start disabled on loaded saves if `enabled` is read from the saved state). `TBD (proposed: write the migration and test with a 0.2.0 save)`.
-- In-game test steps: 1. Place a crusher. 2. Set each recipe. 3. Feed chunks with `/c` or collectors. 4. Count outputs. 5. Load a 0.2.0 save and check the recipes are enabled.
+- Target release: 0.2.0.
+- Save migration: yes in effect, but handled with `migrations/0.2.0.lua`, which sets the two recipes enabled on every force (recipes from a new mod version start disabled on loaded saves if `enabled` is read from the saved state). `TBD (proposed: write the migration and test with a 0.1.0 save)`.
+- In-game test steps: 1. Place a crusher. 2. Set each recipe. 3. Feed chunks with `/c` or collectors. 4. Count outputs. 5. Load a 0.1.0 save and check the recipes are enabled.
 - Changelog line: "Added copper and stone asteroid crushing, available from the start."
 
-### Slice 4. Red-science thruster chain
+### Slice 3. Salvage thruster chain
 
-After this ships, the player researches the thruster with red science, builds a chemical plant, makes fuel and oxidizer from asteroid products, and crafts a thruster.
+After this ships, the player researches the thruster with red science, builds a chemical plant, makes fuel and oxidizer from asteroid products, and crafts a `sky-salvage-thruster`. The vanilla `thruster` stays the later upgrade.
 
 Acceptance criteria:
 
 - [ ] `space-platform-thruster` has no `space-science-pack` prerequisite and only `automation-science-pack` as an ingredient.
-- [ ] After the research, `chemical-plant`, `ice-melting`, `thruster-fuel`, `thruster-oxidizer` and `thruster` are craftable or placeable.
+- [ ] After the research, `chemical-plant`, `ice-melting`, `thruster-fuel`, `thruster-oxidizer` and `sky-salvage-thruster` are craftable or placeable.
 - [ ] A chemical plant on the platform runs `thruster-fuel` from carbon (crushed carbonic chunks) and water (melted ice).
 - [ ] A chemical plant runs `thruster-oxidizer` from iron ore and water.
-- [ ] The thruster recipe uses only items reachable without oil and without chemical science.
+- [ ] The salvage thruster recipe uses only items reachable without oil and without chemical science.
 - [ ] Techs that depend on `space-platform-thruster` still load.
 
 Path to prod:
 
-- Target release: 0.4.0.
-- Save migration: yes (`migrations/0.4.0.lua`: reset technology effects with `force.reset_technology_effects()` so the new `chemical-plant` unlock and changed recipe apply to saves). `TBD (proposed: write and test with a 0.3.0 save)`.
-- In-game test steps: 1. Research `space-platform-thruster` with red packs only. 2. Craft a chemical plant. 3. Set each recipe and supply inputs. 4. Craft a thruster. 5. Load a 0.3.0 save and repeat.
-- Changelog line: "The thruster now needs red science only, and its fuel chain works without oil."
+- Target release: 0.3.0.
+- Save migration: yes (`migrations/0.3.0.lua`: reset technology effects with `force.reset_technology_effects()` so the new `chemical-plant` and `sky-salvage-thruster` unlocks apply to saves). `TBD (proposed: write and test with a 0.2.0 save)`.
+- In-game test steps: 1. Research `space-platform-thruster` with red packs only. 2. Craft a chemical plant. 3. Set each recipe and supply inputs. 4. Craft a salvage thruster. 5. Load a 0.2.0 save and repeat.
+- Changelog line: "Added a red-science salvage thruster, and the fuel chain works without oil."
 
 ## Path to prod
 
-Releases are 0.1.0, 0.2.0, 0.3.0 and 0.4.0, one per slice. Slice 1 ships with start-and-respawn slice 1 as 0.1.0. Release numbers of the two specs share one sequence, so the later slices of both specs must be interleaved by the maintainer when 0.2.0 or later is planned.
+Release plan across both specs (2026-11-15): 0.1.0 = orbit-bootstrap slice 1 + start-and-respawn slices 1 and 2. 0.2.0 = copper and stone crushing. 0.3.0 = salvage thruster chain. 0.4.0 = corpse into the hub. 0.5.0 = pick respawn point and home platform.
 
 Every release passes these checks before upload:
 
@@ -392,8 +390,8 @@ Every release passes these checks before upload:
 2. A headless `factorio --create` load with Space Age and Thud.
 3. The in-game self-test: the test steps of every slice shipped so far.
 
-Target release: 0.1.0 to 0.4.0 as above.
-Save migration: slice 1 no, slice 2 no, slice 3 yes, slice 4 yes.
+Target release: 0.1.0 to 0.3.0 as above.
+Save migration: slice 1 no, slice 2 yes, slice 3 yes.
 
 In-game test steps: see each slice.
 
@@ -401,22 +399,20 @@ Changelog section (mod portal): one line per slice, as written in the slices.
 
 ## Open numbers
 
-- `TBD (proposed: 20)` solar panels in the kit. Enough to power 4 assemblers, 2 labs and inserters in daylight orbit. Panels give no night power, so batteries come later.
-- `TBD (proposed: 40)` inserters in the kit. About 10 per machine row. Cheap to craft from copper and iron.
-- `TBD (proposed: 100)` transport belts in the kit. Two belt loops across the first factory.
-- `TBD (proposed: 50)` space platform foundation. One 5-tile-wide extension strip across the starting size, with some left over.
-- `TBD (proposed: 6)` copper ore per metallic chunk. Under the advanced recipe's 4 copper plus 10 iron mix in effect and well under the 20 iron of the basic recipe, so copper is slow.
-- `TBD (proposed: 6)` stone per oxide chunk. Same low rate as copper. Oxide chunks also feed ice, so stone competes with water.
-- `TBD (proposed: oxide chunk as the stone source)` the brief gives no source. Carbonic would compete with thruster fuel carbon.
-- `TBD (proposed: 200)` red science units for `space-platform-thruster`. Vanilla is 500. Red-only techs in vanilla run 50 to 100 units. 200 keeps it a mid-early goal.
-- `TBD (proposed: 30)` seconds per unit for that tech. Vanilla is 60. Red-only techs use 5 to 30 seconds.
-- `TBD (proposed: steel-plate 10, electronic-circuit 10, iron-gear-wheel 10, pipe 5)` thruster recipe. Replaces `processing-unit` and `electric-engine-unit`, which need chemical science and oil.
-- `TBD (proposed: steel-processing, electronics)` prerequisites of `space-platform-thruster`. Steel is a red tech. Electronics is a trigger tech set researched at start.
-- `TBD (proposed: electronics, steam-power, automation-science-pack, automation)` extra start-researched techs. They are the chain behind the red science recipe. `automation` is unverified.
-- `TBD (proposed: 0.0125 for each chunk type)` chunk spawn probability at the Drift. Equals `nauvis_chunks`, the highest vanilla orbit rate.
-- `TBD (proposed: 3 : 2 : 1)` metallic : carbonic : oxide ratio. Equals `nauvis_ratio`. Iron and copper first, then carbon, then ice.
-- `TBD (proposed: none)` small, medium and big asteroids at the Drift. No defence needed in the first hours.
+Decided 2026-11-15. These moved here from the open list:
+
+- Kit: 20 solar panels, 40 inserters, 100 transport belts and 50 space platform foundations. Solar panels power the first machines in daylight orbit, so batteries come later. The `sky-platforms-kit-scale` setting (startup, double, default 1) multiplies them.
+- Armor: each player's character gets one `mech-armor` on first spawn, including late joiners. The hub holds none.
+- Copper: `sky-metallic-crushing-copper` gives 6 copper ore per metallic chunk. Stone: `sky-oxide-crushing-stone` gives 6 stone per oxide chunk. Both settings default to 6.
+- Thruster tech: `space-platform-thruster` costs 200 red science units at 30 seconds each, with prerequisites `steel-processing` and `electronics`.
+- Salvage thruster recipe: 10 `steel-plate`, 10 `electronic-circuit`, 10 `iron-gear-wheel` and 5 `pipe`.
+- Start techs: `space-platform`, `thud-orbital-ascent`, `steam-power`, `electronics`, `automation-science-pack` and `automation`.
+- Drift chunks: 0.0125 each type, ratio 3 : 2 : 1 metallic : carbonic : oxide, and no small, medium or big asteroids.
+- Existing saves: saves that already have a platform or are past tick 0 get no kit.
+
+Still open:
+
+- `TBD (proposed: 50% of the vanilla thruster's max performance)` performance of `sky-salvage-thruster`.
 - `TBD (proposed: -10, 5, 0.25)` `gravity_pull`, `distance` and `orientation` of `sky-drift`. Same pull as `solar-system-edge`. The others only place the icon, and #9 can move them.
-- `TBD (proposed: character gets mech-armor, hub holds none)` where the one armor goes.
-- `TBD (proposed: skip bootstrap on saves with any platform or tick > 0)` bootstrap on an existing save. Never hand a kit to a running game.
-- `TBD (proposed: 1)` default of `sky-platforms-kit-scale`. The decided kit is the baseline.
+- Rounding of kit counts after `sky-platforms-kit-scale` multiplies them. Not decided.
+- Start tech names. `automation` is unverified, so check each name in `prototypes` before shipping.

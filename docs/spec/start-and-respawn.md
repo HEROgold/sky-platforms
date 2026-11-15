@@ -7,7 +7,7 @@ The player is a normal character standing on a space platform. This spec defines
 Decided on 2026-11-15:
 
 - The character is a vanilla `character`. Handcrafting stays on.
-- Empty space blocks movement, as in vanilla. The starting kit includes `mech-armor`, which lets the character fly over empty space and planet obstacles.
+- Empty space blocks movement, as in vanilla. Every player gets one `mech-armor` on their first spawn, which lets the character fly over empty space and planet obstacles.
 - Losing the armor over empty space kills the character. This is vanilla behaviour and needs no code.
 - Respawn is a per-player choice of respawn point, defaulting to the home platform.
 - When a character dies, the mod moves the corpse's items into the home platform hub. The fallback is the nearest platform tile.
@@ -22,15 +22,15 @@ Decided on 2026-11-15:
 
 1. A force has at most one home platform. `storage.home_platform[force_index]` holds it.
 2. The first home platform of a force is the platform created by orbit bootstrap at game start.
-3. A new player (`on_player_created`, or first join of an existing save) gets a fresh `character` on the home platform surface, within 5 tiles of the hub, on a tile that is not `empty-space`. The proposed radius is `TBD (proposed: 5)`.
+3. A new player (`on_player_created`, or first join of an existing save) gets a fresh `character` on the home platform surface, within 5 tiles of the hub, on a tile that is not `empty-space`. The radius is 5 tiles.
 4. The character that vanilla created on Nauvis for that player is destroyed after the new controller is set. No character is left on Nauvis.
-5. The new character wears the items the kit gives it. At game start that includes `mech-armor` in the armor slot. A player who joins later gets no armor from the mod: `TBD (proposed: no extra armor; later joiners take one from the hub if one exists)`.
+5. Every player gets one `mech-armor` in the armor slot on their first spawn, whether they join at game start or later. The mod records this in `storage.armor_given[player_index]`. Dying never gives new items.
 6. A player who dies respawns on the platform in their respawn choice. With no choice stored, the respawn point is the home platform.
 7. If the chosen platform no longer exists or is not valid, the respawn point falls back to the home platform. If that also does not exist, it falls back to any platform of the force, lowest platform index first. If the force has no platform, the player respawns with the vanilla result and the mod prints one message to that player.
 8. After a respawn, the player never stands on Nauvis (or any non-platform surface) unless no platform exists (statement 7).
 9. A respawned character stands on a non-`empty-space` tile within 5 tiles of the hub of the respawn platform.
 10. When a character dies, the items in the corpse move into the hub of the home platform. The hub inventory is `defines.inventory.chest`.
-11. Items that do not fit in the hub stay in the corpse. The corpse then moves to the nearest platform tile of the death surface, searched within a radius of 32 tiles. The proposed radius is `TBD (proposed: 32)`.
+11. Items that do not fit in the hub stay in the corpse. The corpse then moves to the nearest platform tile of the death surface, searched within a radius of 32 tiles.
 12. If the hub does not exist (destroyed or platform deleted), statement 11 applies to all items.
 13. If the death surface is not a platform surface, statements 10 to 12 use the home platform surface. The corpse is not moved to a platform it cannot reach, so the mod moves the items, not the entity.
 14. A player may set a respawn point to any platform of their force that has a hub. The choice persists across saves and sessions.
@@ -41,10 +41,17 @@ Decided on 2026-11-15:
 ## Data stage
 
 - Item `mech-armor`: vanilla Space Age item, no change. The mod only inserts it. The name comes from the brief. A direct check of `base/prototypes/item.lua` found no `"mech-armor"` entry, so the file that defines it is not found. Slice 1 includes one check that the item exists in `data.raw.armor`.
-- Custom input and shortcut for the respawn and home picker GUI (slice 4):
-  - `custom-input` `sky-platforms-respawn-menu`, default key `CONTROL + H`.
-  - `shortcut` `sky-platforms-respawn-menu`, action `lua`, `associated_control_input = "sky-platforms-respawn-menu"`.
-- Locale keys for the GUI (slice 4). No other prototypes.
+- Access to the respawn and home picker GUI (slice 4):
+  - `custom-input` `sky-platforms-open-respawn-picker`, default key `CONTROL + H`.
+  - A button at the top left of the screen, in the mod GUI top flow (`mod-gui` button flow from `__core__/lualib/mod-gui`). It opens the same picker as the custom input. No shortcut prototype is needed.
+- Locale keys for the GUI and the control name (slice 4). No other prototypes.
+
+### Controls
+
+For the mod portal description:
+
+- `CONTROL + H` opens the respawn and home picker. The control is `sky-platforms-open-respawn-picker`, and its label comes from the locale `controls` section.
+- The top left button opens the same picker.
 
 ## Control stage
 
@@ -54,6 +61,7 @@ Decided on 2026-11-15:
 storage.home_platform = {}      -- [force_index] = platform_index
 storage.respawn_choice = {}     -- [player_index] = platform_index; nil means "use home"
 storage.pending_corpse = {}     -- [player_index] = { surface_index, position }
+storage.armor_given = {}        -- [player_index] = true once the player got mech-armor
 ```
 
 `LuaSpacePlatform.index` is the key used. Check that the attribute exists in `runtime-api.json` before slice 1 closes. It was not looked up for this draft.
@@ -62,9 +70,9 @@ storage.pending_corpse = {}     -- [player_index] = { surface_index, position }
 
 | Event | Handler |
 | --- | --- |
-| `on_init` | Create the three storage tables. |
+| `on_init` | Create the four storage tables. |
 | `on_configuration_changed` | Create missing tables. Drop entries whose platform no longer exists. |
-| `on_player_created` | If the player has no character on a platform, call `place_on_home(player)`. |
+| `on_player_created` | If the player has no character on a platform, call `place_on_home(player)`. Then call `give_armor(player)`. |
 | `on_player_joined_game` | Safety net: if `player.surface` is not a platform surface and the force has a home platform, call `place_on_home(player)`. This covers existing saves. |
 | `on_pre_player_died` | Record `storage.pending_corpse[player_index] = { surface_index, position }` from `player.character`. |
 | `on_player_died` | Find the corpse near the recorded position and move its items (statements 10 to 13). Clear `pending_corpse`. |
@@ -72,6 +80,24 @@ storage.pending_corpse = {}     -- [player_index] = { surface_index, position }
 | `on_surface_deleted`, `on_space_platform_changed_state` | Remove stale `home_platform` and `respawn_choice` entries, then re-pick the home platform by statement 7 order. |
 
 Platform deletion has no dedicated event looked up for this draft. Not found: confirm the exact event name (`on_space_platform_pre_mined`, `on_surface_deleted`) in `runtime-api.json` in slice 1.
+
+### Armor on first spawn
+
+Each player gets one `mech-armor` once, from `on_player_created`. This covers players at game start and players who join later. `on_player_joined_game` and the respawn handler do not give armor.
+
+```lua
+local function give_armor(player)
+  local char = player.character
+  if storage.armor_given[player.index] or not (char and char.valid) then
+    return
+  end
+  if char.get_inventory(defines.inventory.character_armor).insert("mech-armor") == 1 then
+    storage.armor_given[player.index] = true
+  end
+end
+```
+
+The flag is set only after the insert succeeds, so a failed insert can retry on the next call.
 
 ### Placing a character on a platform
 
@@ -101,6 +127,8 @@ Vanilla creates the respawned character on the force's spawn surface (Nauvis). T
 3. `LuaForce.set_spawn_position(position, surface)` and `get_spawn_position(surface)` exist in `runtime-api.json`. They take a surface, so they set a per-surface spawn point. The runtime API does not say which surface a respawn uses. Not found. The mod therefore does not rely on spawn positions. It relocates after the fact.
 4. A player who dies over empty space becomes a ghost (prototype finding) and would respawn on Nauvis at 0,0. `on_player_respawned` fires after that respawn, so statement 1 above handles it. `LuaPlayer.ticks_to_respawn` can be set to `nil` for an immediate respawn. The mod does not change the respawn timer in v1.
 
+`give_armor` does not run here, so a dead player gets no new armor. The items in the corpse go to the hub (Corpse handling).
+
 ### Corpse handling
 
 1. In `on_pre_player_died`, store the surface index and position of `player.character`.
@@ -110,14 +138,14 @@ Vanilla creates the respawned character on the force's spawn surface (Nauvis). T
 
 ### Picker GUI (slice 4)
 
-A small frame opened by the custom input. It lists the force's platforms by name (`platform.name`) with two buttons per row, "Respawn here" and "Make home". Handlers use `on_gui_click`. The GUI reads and writes the storage keys above and nothing else.
+A small frame opened by the custom input `sky-platforms-open-respawn-picker` or by the top left button. It lists the force's platforms by name (`platform.name`) with two buttons per row, "Respawn here" and "Make home". Handlers use `on_gui_click`. The GUI reads and writes the storage keys above and nothing else.
 
 ## Settings
 
 | Name | Type | Default | Use |
 | --- | --- | --- | --- |
-| `sky-platforms-corpse-search-radius` | runtime-global, int, min 4, max 128 | 32 `TBD (proposed: 32)` | Radius for the nearest platform tile fallback (statement 11). |
-| `sky-platforms-spawn-radius` | runtime-global, int, min 1, max 16 | 5 `TBD (proposed: 5)` | Distance from the hub for new and respawned characters (statements 3 and 9). |
+| `sky-platforms-corpse-search-radius` | runtime-global, int, min 4, max 128 | 32 | Radius for the nearest platform tile fallback (statement 11). |
+| `sky-platforms-spawn-radius` | runtime-global, int, min 1, max 16 | 5 | Distance from the hub for new and respawned characters (statements 3 and 9). |
 
 The respawn choice is not a setting. It holds a platform index, which a settings value cannot express safely, so it lives in `storage`.
 
@@ -125,14 +153,14 @@ The respawn choice is not a setting. It holds a platform index, which a settings
 
 - New saves: `on_init` creates the tables.
 - Existing saves of this mod (before 0.1.0 there are none): None.
-- Saves that load the mod for the first time: `on_configuration_changed` creates the tables. `on_player_joined_game` pulls players who stand off-platform onto the home platform. If no home platform exists, `home_platform` stays empty until orbit bootstrap creates one.
-- Migration file: `migrations/0.2.0.lua` only if slice 2 changes the table shape. At present, None.
+- Saves that load the mod for the first time: `on_configuration_changed` creates the tables, including `storage.armor_given`. `on_player_joined_game` pulls players who stand off-platform onto the home platform. If no home platform exists, `home_platform` stays empty until orbit bootstrap creates one.
+- Migration file: `migrations/0.4.0.lua` or `migrations/0.5.0.lua` only if a later slice changes the table shape. At present, None.
 
 ## Multiplayer and determinism
 
 - All handlers run on every peer with identical inputs. They read only `storage` and game state.
 - Iterate platforms with `force.platforms` in a stable order. Sort by `platform.index` before picking a fallback. Never use `pairs` order on a table keyed by index to decide the result.
-- A player who joins later takes the same path as the first player (statement 3). Their `player_index` is new, so `respawn_choice` has no entry and the home platform applies.
+- A player who joins later takes the same path as the first player (statement 3). Their `player_index` is new, so `respawn_choice` has no entry and the home platform applies. They also get one `mech-armor` from `give_armor`. `storage.armor_given` keyed by `player_index` makes sure a player gets one armor only, even if the handler runs again.
 - Several players who die in the same tick are handled one `on_player_died` at a time. Each corpse is matched by `character_corpse_player_index`, so two corpses on one tile do not swap. The hub is filled in event order. Event order is the same on all peers.
 - A player who respawns while another player edits the home platform sees the home platform of the tick when `on_player_respawned` ran.
 - The GUI changes `storage` only inside `on_gui_click`, which Factorio replays on all peers. No GUI state is stored in module-level variables.
@@ -156,13 +184,14 @@ Acceptance criteria:
 - [ ] The first player stands on the home platform within the spawn radius, on a non-`empty-space` tile.
 - [ ] No character of that player remains on Nauvis (`game.surfaces.nauvis.find_entities_filtered({ name = "character" })` is empty).
 - [ ] A second player who joins later stands on the same platform.
+- [ ] Each player's character wears one `mech-armor` after its first spawn. A late joiner gets one too. Dying gives no new armor.
 - [ ] `emmylua_check` passes, and a headless `factorio --create` run loads the mod.
 
 Path to prod:
 
 - Target release: 0.1.0.
 - Save migration: no.
-- In-game test steps: 1. New game with the mod. 2. Confirm the character stands on the platform. 3. Join a second client. Confirm it stands on the same platform. 4. Check that Nauvis has no character.
+- In-game test steps: 1. New game with the mod. 2. Confirm the character stands on the platform and wears `mech-armor`. 3. Join a second client. Confirm it stands on the same platform and wears one `mech-armor`. 4. Check that Nauvis has no character.
 - Changelog line: "You now start on a space platform, and new players join there."
 
 ### Slice 2. Respawn on the platform
@@ -179,7 +208,7 @@ Acceptance criteria:
 
 Path to prod:
 
-- Target release: 0.2.0.
+- Target release: 0.1.0 (a vanilla respawn would put players on hidden Nauvis).
 - Save migration: no.
 - In-game test steps: 1. Run `/c game.player.character.die()`. 2. Check position and surface after respawn. 3. Fly over space, remove armor, repeat. 4. Repeat with two players.
 - Changelog line: "Dead players respawn on the home platform instead of Nauvis."
@@ -198,7 +227,7 @@ Acceptance criteria:
 
 Path to prod:
 
-- Target release: 0.3.0.
+- Target release: 0.4.0.
 - Save migration: no.
 - In-game test steps: 1. Give the character items. 2. Kill the character on the platform and in space. 3. Open the hub and check items. 4. Fill the hub with a test script and repeat.
 - Changelog line: "A dead player's items now move into the home platform hub."
@@ -209,7 +238,8 @@ After this ships, a player opens a small window and chooses where they respawn, 
 
 Acceptance criteria:
 
-- [ ] The shortcut and the key `CONTROL + H` open a list of the force's platforms.
+- [ ] The top left button and the key `CONTROL + H` open a list of the force's platforms.
+- [ ] The control `sky-platforms-open-respawn-picker` shows in the game's controls settings with its locale label.
 - [ ] "Respawn here" stores `respawn_choice[player_index]`. The next death respawns there.
 - [ ] "Make home" stores `home_platform[force_index]`. New players and corpses use it.
 - [ ] Choices survive save and load.
@@ -217,14 +247,14 @@ Acceptance criteria:
 
 Path to prod:
 
-- Target release: 0.4.0.
+- Target release: 0.5.0.
 - Save migration: no (tables exist since 0.1.0).
 - In-game test steps: 1. Create a second platform. 2. Pick it as respawn point. 3. Die and check. 4. Make it home. 5. Join a second client and check. 6. Save, load, check again.
 - Changelog line: "Added a window to pick your respawn platform and the home platform."
 
 ## Path to prod
 
-Releases are 0.1.0, 0.2.0, 0.3.0 and 0.4.0, one per slice. Slice 1 ships together with orbit-bootstrap slice 1 as 0.1.0.
+Release plan across both specs (2026-11-15): 0.1.0 = orbit-bootstrap slice 1 + start-and-respawn slices 1 and 2. 0.2.0 = copper and stone crushing. 0.3.0 = salvage thruster chain. 0.4.0 = corpse into the hub. 0.5.0 = pick respawn point and home platform.
 
 Every release passes these checks before upload:
 
@@ -232,7 +262,7 @@ Every release passes these checks before upload:
 2. A headless `factorio --create` load of the zipped mod with its dependencies (Space Age, Thud).
 3. The in-game self-test: the test steps of every slice shipped so far.
 
-Target release: 0.1.0 to 0.4.0 as above.
+Target release: 0.1.0, 0.4.0 and 0.5.0 as above.
 Save migration: no, in all four slices.
 
 In-game test steps: see each slice.
@@ -241,8 +271,15 @@ Changelog section (mod portal): one line per slice, as written in the slices.
 
 ## Open numbers
 
-- `TBD (proposed: 5)` spawn and respawn radius around the hub, in tiles. Close enough to find the hub at once, far enough that several players do not stack.
-- `TBD (proposed: 32)` corpse search radius for the nearest platform tile. A starting platform is a few dozen tiles wide, so 32 covers it.
-- `TBD (proposed: no extra armor)` armor for a late joiner. Free armor would undo the "lose it over space and die" risk, and the hub holds the armor after a death.
-- `TBD (proposed: CONTROL + H)` key for the picker window. Not bound in vanilla Factorio 2.1 to the best of the brief's knowledge. Check for conflicts before 0.4.0.
-- `TBD (proposed: no change to respawn timer)` vanilla respawn delay stays as it is.
+Decided 2026-11-15. These moved here from the open list:
+
+- Spawn and respawn radius: 5 tiles around the hub.
+- Corpse search radius: 32 tiles.
+- Armor: every player gets one `mech-armor` on first spawn, including late joiners. Dying gives no new items.
+- Picker access: a top left button and the custom input `sky-platforms-open-respawn-picker`, default key `CONTROL + H`.
+- Respawn timer: the vanilla delay stays as it is.
+- Existing saves: saves that already have a platform or are past tick 0 get no kit.
+
+Still open:
+
+- Check that `CONTROL + H` does not conflict with another binding before 0.5.0. It is not bound in vanilla Factorio 2.1 to the best of the brief's knowledge.
