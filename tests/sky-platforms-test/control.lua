@@ -196,6 +196,40 @@ local function check_techs(force)
   end
 end
 
+--- Checks that need no player: the spawn search the mod would use.
+local function check_spawn_position()
+  local pos = remote.call("sky-platforms", "home_platform_spawn_position", 1)
+  check("spawn position found", pos ~= nil)
+  local platform = find_home_platform(game.forces["player"])
+  if not (pos and platform and platform.valid and platform.hub and platform.hub.valid) then return end
+  local hub = platform.hub.position
+  local distance = math.sqrt((pos.x - hub.x) ^ 2 + (pos.y - hub.y) ^ 2)
+  check("spawn position within 5 tiles of hub", distance <= 5, string.format("%.2f", distance))
+  local tile = platform.surface.get_tile(math.floor(pos.x), math.floor(pos.y))
+  check("spawn tile is not empty-space", tile.valid and tile.name ~= "empty-space", tile.valid and tile.name or "invalid")
+end
+
+local function check_character(player)
+  local character = player.character
+  check("player has a character", character ~= nil and character.valid)
+  if not (character and character.valid) then return end
+  local platform = character.surface.platform
+  check("character stands on a platform surface", platform ~= nil)
+  local hub = platform and platform.valid and platform.hub
+  if hub and hub.valid then
+    local d = math.sqrt((character.position.x - hub.position.x) ^ 2 + (character.position.y - hub.position.y) ^ 2)
+    check("character within 5 tiles of hub", d <= 5, string.format("%.2f", d))
+  end
+  local tile = character.surface.get_tile(math.floor(character.position.x), math.floor(character.position.y))
+  check("character tile is not empty-space", tile.valid and tile.name ~= "empty-space", tile.valid and tile.name or "invalid")
+  local armor = character.get_inventory(defines.inventory.character_armor)
+  local count = armor and armor.get_item_count("mech-armor") or -1
+  check("mech-armor equipped once", count == 1, count)
+  local nauvis = game.surfaces["nauvis"]
+  local left = nauvis and nauvis.find_entities_filtered({ name = "character" }) or {}
+  check("Nauvis has no character left", #left == 0, #left)
+end
+
 local steps = {
   function()
     guarded("kit", function()
@@ -208,6 +242,14 @@ local steps = {
       if platform and not storage.test.furnace_started then
         start_furnace_check(platform)
       end
+      check_spawn_position()
+    end)
+  end,
+  function()
+    guarded("spawn", function()
+      local player = game.get_player(storage.test.player)
+      check("test player is valid", player ~= nil and player.valid)
+      if player and player.valid then check_character(player) end
     end)
   end,
   function()
