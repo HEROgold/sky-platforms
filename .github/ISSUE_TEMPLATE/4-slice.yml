@@ -1,0 +1,61 @@
+name: Slice
+description: "One player-visible change that ships on its own. Link the parent spec."
+title: "[Slice] "
+labels: ["type:slice"]
+body:
+  - type: input
+    id: parent-spec
+    attributes:
+      label: Parent spec
+      description: "Issue number of the spec, for example #30."
+      placeholder: "#"
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: "The player problem or value this slice solves. Link the spec or evidence."
+    validations:
+      required: true
+  - type: textarea
+    id: player-can
+    attributes:
+      label: What the player can do after this ships
+      description: "One or two sentences, written from the player's side."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: "Checklist. Each item is testable."
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: "Related work that this slice leaves out."
+  - type: textarea
+    id: path-to-prod
+    attributes:
+      label: Path to prod
+      description: "Release version, save migration, in-game test steps and the changelog line."
+      value: "Target release: \nMigration needed: yes/no\nIn-game test steps:\n1. \nChangelog line: "
+    validations:
+      required: true
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size
+      description: "L means split it."
+      options:
+        - XS
+        - S
+        - M
+        - L
+    validations:
+      required: true

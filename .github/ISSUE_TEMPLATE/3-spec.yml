@@ -1,0 +1,75 @@
+name: Spec
+description: "Write precise, testable behaviour and the path to prod. Link the parent design."
+title: "[Spec] "
+labels: ["type:spec"]
+body:
+  - type: input
+    id: parent-design
+    attributes:
+      label: Parent design
+      description: "Issue number of the design, for example #20."
+      placeholder: "#"
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: "The player problem or value this spec serves. Link the design and any evidence."
+    validations:
+      required: true
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: Behaviour
+      description: "Precise, testable statements, one per line. Each one can be checked in game or in a test."
+    validations:
+      required: true
+  - type: textarea
+    id: data-stage
+    attributes:
+      label: Prototypes and data changes
+      description: "Data stage work. New prototypes, recipes and technologies, and changes to existing prototypes."
+  - type: textarea
+    id: control-stage
+    attributes:
+      label: Runtime changes
+      description: "Control stage work. Events, handlers and storage."
+  - type: textarea
+    id: settings
+    attributes:
+      label: Settings
+      description: "Each setting with its type (startup, runtime-global or runtime-per-user), its name and its default."
+  - type: textarea
+    id: save-compat
+    attributes:
+      label: Save compatibility and migrations
+      description: "What happens to existing saves. Name the migration file and the version it ships in, or write none."
+    validations:
+      required: true
+  - type: textarea
+    id: multiplayer
+    attributes:
+      label: Multiplayer and determinism notes
+      description: "What runs on each peer, and any desync risks."
+  - type: textarea
+    id: slices
+    attributes:
+      label: Planned slices
+      description: "Checklist. One line per slice. Link each slice as a sub-issue."
+      value: |
+        - [ ] #
+        - [ ] #
+  - type: textarea
+    id: path-to-prod
+    attributes:
+      label: Path to prod
+      description: "Target release, how to test in game, and the changelog section for the mod portal."
+      value: |
+        Target release:
+        Save migration: yes/no
+        In-game test steps:
+        1.
+        Changelog section:
+    validations:
+      required: true

@@ -1,0 +1,34 @@
+name: Research
+description: "Answer a question that blocks a decision. Record sources and findings."
+title: "[Research] "
+labels: ["type:research"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: "The question to answer, in one or two sentences."
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why we need the answer
+      description: "What the answer changes. Link the idea or design it serves."
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources to check
+      description: "Links to check, such as wiki pages, the Factorio API docs, code or forum threads."
+  - type: textarea
+    id: findings
+    attributes:
+      label: Findings
+      description: "Filled in later. Each finding with a link to its source."
+  - type: textarea
+    id: decision
+    attributes:
+      label: Decision it unblocks
+      description: "The decision this answer unblocks, and who makes it."

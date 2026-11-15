@@ -1,0 +1,61 @@
+name: Design
+description: "Explain how a feature plays and what it changes. Link the parent idea."
+title: "[Design] "
+labels: ["type:design"]
+body:
+  - type: input
+    id: parent-idea
+    attributes:
+      label: Parent idea
+      description: "Issue number of the idea, for example #12."
+      placeholder: "#"
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: "The player problem or value. Link the idea and any evidence."
+    validations:
+      required: true
+  - type: textarea
+    id: player-experience
+    attributes:
+      label: Player experience
+      description: "What the player sees and does, step by step."
+      placeholder: |
+        1. The player opens the platform hub.
+        2. The player picks a planet.
+    validations:
+      required: true
+  - type: textarea
+    id: mechanics
+    attributes:
+      label: Mechanics and rules
+      description: "How the feature works. Include limits and edge cases."
+  - type: textarea
+    id: options
+    attributes:
+      label: Options considered
+      description: "Each option you weighed. For each one, say why you picked it or dropped it."
+  - type: textarea
+    id: vanilla-impact
+    attributes:
+      label: Vanilla impact
+      description: "What changes from vanilla Factorio. Keep it as small as the goal allows."
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Mod compatibility and dependencies
+      description: "Other mods this touches or depends on, and the plan for each."
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks
+      description: "What could go wrong, and how you would notice."
+  - type: input
+    id: design-doc
+    attributes:
+      label: Design doc link
+      description: "Path to the design doc, for example docs/design/platform-planets.md."
+      placeholder: "docs/design/"

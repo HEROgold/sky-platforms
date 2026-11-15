@@ -1,0 +1,35 @@
+name: Idea
+description: "Propose a player problem or value worth solving. Start here."
+title: "[Idea] "
+labels: ["type:idea"]
+body:
+  - type: input
+    id: pitch
+    attributes:
+      label: Pitch
+      description: "One sentence that says what changes for the player."
+      placeholder: "Players can see the power load of each network on the map."
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: "The player problem or the value this gives. Describe what players do today and what goes wrong."
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: "Links to research notes, Reddit threads, mod portal comments or discussions."
+  - type: textarea
+    id: rough-scope
+    attributes:
+      label: Rough scope
+      description: "Which parts of the game this touches, and roughly how big it is."
+  - type: textarea
+    id: open-questions
+    attributes:
+      label: Open questions
+      description: "What still needs answers before a design can start."

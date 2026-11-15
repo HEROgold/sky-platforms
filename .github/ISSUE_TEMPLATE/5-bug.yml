@@ -1,0 +1,54 @@
+name: Bug
+description: "Something in the mod breaks or behaves in a way the design does not describe."
+title: "[Bug] "
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Start a new game with the mod enabled."
+    validations:
+      required: true
+  - type: input
+    id: mod-version
+    attributes:
+      label: Mod version
+    validations:
+      required: true
+  - type: input
+    id: factorio-version
+    attributes:
+      label: Factorio version
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Mod list or factorio-current.log excerpt
+      description: "Paste the mod list or the lines around the error."
+      render: shell
+  - type: input
+    id: save-file
+    attributes:
+      label: Save file link
+      description: "Link to a save file that shows the bug, if you can share one."
+  - type: dropdown
+    id: player-mode
+    attributes:
+      label: Single or multiplayer
+      options:
+        - Single player
+        - Multiplayer
+    validations:
+      required: true
