@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sky Platforms: planet types prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --accent:#0f6b73; --tint:#e3f1f2; --ink:#1d2327; --muted:#66727a; --line:#d5dbde; --bg:#f6f7f8; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,Segoe UI,Arial,sans-serif; }
+  main { max-width:1000px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  h2 { font-size:18px; margin:0 0 10px; }
+  h3 { font-size:15px; margin:14px 0 6px; }
+  .question { border-left:4px solid var(--accent); background:#fff; padding:12px 16px; margin:12px 0 20px; font-size:16px; }
+  section { background:#fff; border:1px solid var(--line); padding:16px; margin-bottom:16px; }
+  .muted { color:var(--muted); }
+  .small { font-size:13px; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--accent); background:#fff; color:var(--accent); cursor:pointer; margin:0 6px 6px 0; }
+  button:hover { background:var(--tint); }
+  button.on { background:var(--accent); color:#fff; }
+  button.plain { border-color:var(--line); color:var(--ink); }
+  input[type=number], input[type=text], select { font:inherit; padding:4px 6px; border:1px solid var(--line); background:#fff; }
+  input[type=number] { width:70px; }
+  .rules { display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:12px; }
+  .rule { border:1px solid var(--line); padding:10px; background:#fafbfb; }
+  .rule b { display:block; margin-bottom:4px; }
+  .rule label { display:block; margin:2px 0; }
+  .cards { display:flex; flex-wrap:wrap; gap:10px; margin:6px 0 10px; }
+  .card { border:1px solid var(--line); padding:8px 10px; min-width:230px; max-width:300px; background:#fff; }
+  .card.live { border-color:var(--accent); }
+  .card .tag { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .card .name { font-weight:600; }
+  .special { color:var(--accent); font-weight:600; }
+  .changed { background:var(--tint); border-left:4px solid var(--accent); padding:8px 12px; margin:8px 0; }
+  .changed ul { margin:0; padding-left:18px; }
+  table { border-collapse:collapse; width:100%; font-size:14px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  pre { margin:8px 0 0; padding:10px; background:#fafbfb; border:1px solid var(--line); font:13px/1.4 Consolas,monospace; overflow-x:auto; }
+  .facts span { display:inline-block; margin-right:18px; }
+  .facts b { color:var(--accent); }
+  .scroll { max-height:220px; overflow-y:auto; border:1px solid var(--line); }
+  .tabs { margin-bottom:10px; }
+  .steps { margin:8px 0; }
+  .note { background:#fafbfb; border:1px solid var(--line); padding:8px 12px; margin:8px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Sky Platforms: planet types</h1>
+  <div class="muted small">Throwaway logic prototype. It checks the rules, not the look. Nothing here is saved.</div>
+  <div class="question"><b>The question.</b> Which planet types appear, how often, and how far ahead can the player see, so that every type and special (especially uranium and Aquilo) shows up often enough to progress, without the player waiting hours for the one they need?</div>
+
+  <section id="rulesPanel">
+    <h2>Rules</h2>
+    <div class="muted small" style="margin-bottom:8px">Changing any rule restarts the free-play run with the same seed. Walkthroughs use their own rules.</div>
+    <div class="rules">
+      <div class="rule"><b>1. Type weights</b>
+        <label>Nauvis-like <input type="number" id="w_nauvis" min="0"></label>
+        <label>Vulcanus-like <input type="number" id="w_vulcanus" min="0"></label>
+        <label>Fulgora-like <input type="number" id="w_fulgora" min="0"></label>
+        <label>Gleba-like <input type="number" id="w_gleba" min="0"></label>
+        <label>Aquilo-like <input type="number" id="w_aquilo" min="0"></label>
+      </div>
+      <div class="rule"><b>2. Type gating</b>
+        <label><select id="gating"><option value="none">None, every type from the start</option><option value="stage">By progression stage</option></select></label>
+        <label>Stage 2 (adds Vulcanus, Fulgora, Gleba) after <input type="number" id="stage2At" min="0"> planets visited</label>
+        <label>Stage 3 (adds Aquilo) after <input type="number" id="stage3At" min="0"> planets visited</label>
+      </div>
+      <div class="rule"><b>3. Special chance</b>
+        <label>Uranium on a Nauvis-like <input type="number" id="uraniumChance" min="0" max="100">%</label>
+        <label>Other types' special <select id="otherSpecial"><option value="guaranteed">Always there</option><option value="chance">Only by chance</option></select></label>
+        <label>Chance, if by chance <input type="number" id="otherChance" min="0" max="100">%</label>
+      </div>
+      <div class="rule"><b>4. Richness roll (weights)</b>
+        <label>Poor <input type="number" id="r_poor" min="0"></label>
+        <label>Normal <input type="number" id="r_normal" min="0"></label>
+        <label>Rich <input type="number" id="r_rich" min="0"></label>
+      </div>
+      <div class="rule"><b>5. Foresight</b>
+        <label><select id="foresight">
+          <option value="none">None, type revealed on arrival</option>
+          <option value="type">Type of the next planet</option>
+          <option value="typeRes">Type and resources of the next planet</option>
+          <option value="two">Next two planets, type and resources</option>
+        </select></label>
+      </div>
+      <div class="rule"><b>6. Pity rule</b>
+        <label><select id="pity"><option value="off">Off</option><option value="on">On</option></select></label>
+        <label>Guarantee a type (or uranium) that has not appeared in the last <input type="number" id="pityN" min="1"> planets</label>
+      </div>
+      <div class="rule"><b>7. Skip with scanner</b>
+        <label><input type="checkbox" id="skipEnabled"> Skipping re-rolls the planet and uses one charge</label>
+        <label>Charges per hour <input type="number" id="scannerPerHour" min="0"></label>
+        <label>Most charges held <input type="number" id="scannerCap" min="1"></label>
+      </div>
+    </div>
+    <p><button id="rulesDefault" class="plain">Back to default rules</button></p>
+  </section>
+
+  <section>
+    <h2>Current state</h2>
+    <div id="fpState"></div>
+    <h3>Free play</h3>
+    <div>
+      <button id="bArrive">Next planet arrives</button>
+      <button id="bLand">Land (counts as a visit)</button>
+      <button id="bSkip">Skip with scanner</button>
+      <button id="bHour">Advance 1 hour</button>
+      <span style="margin-left:12px">Seed <input type="text" id="seed" value="1" size="8"></span>
+      <button id="bReset" class="plain">Reset</button>
+    </div>
+    <div class="muted small">Skip hits the next planet if foresight shows it, otherwise the newest planet you have not landed on. Advance 1 hour only recharges the scanner. Arrivals are yours to press. Only two planets stay live, so a third arrival removes the oldest.</div>
+  </section>
+
+  <section>
+    <h2>Campaign summary</h2>
+    <div class="muted small">100 planets, about 25 hours at one planet per 15 minutes. Current rules and seed. The player lands on every planet and never skips.</div>
+    <div id="summary"></div>
+  </section>
+
+  <section>
+    <h2>Guided walkthroughs</h2>
+    <div class="muted small">Each tab restarts at a known seed and rules. Step buttons play the run forward. Pressing a step replays from the start up to that step, so any order works.</div>
+    <div class="tabs" id="wtTabs"></div>
+    <div id="wtBody"></div>
+  </section>
+</main>
+
+<!-- Pure logic: no DOM. Seeded RNG, reducer, simulate. -->
+<script id="logic">
+const Logic = (function () {
+  'use strict';
+  const TYPES = ['nauvis', 'vulcanus', 'fulgora', 'gleba', 'aquilo'];
+  const INFO = {
+    nauvis:   { name: 'Nauvis-like',   resources: ['iron', 'copper', 'stone', 'coal', 'crude oil', 'water'], specials: ['uranium'], enemies: 'biters', science: null },
+    vulcanus: { name: 'Vulcanus-like', resources: ['coal', 'calcite', 'lava', 'sulfuric acid geysers'], specials: ['tungsten'], enemies: 'demolishers', science: 'Vulcanus' },
+    fulgora:  { name: 'Fulgora-like',  resources: ['heavy oil ocean', 'lightning'], specials: ['holmium'], enemies: 'none', science: 'Fulgora' },
+    gleba:    { name: 'Gleba-like',    resources: ['stone', 'water'], specials: ['fruit'], enemies: 'pentapods', science: 'Gleba' },
+    aquilo:   { name: 'Aquilo-like',   resources: ['crude oil', 'ammonia ocean'], specials: ['lithium', 'fluorine'], enemies: 'none, extreme cold (needs heating)', science: 'Aquilo' }
+  };
+  const SPECIAL_LABEL = { uranium: 'uranium', tungsten: 'tungsten', holmium: 'scrap (holmium)', fruit: 'yumako and jellynut fruit', lithium: 'lithium brine', fluorine: 'fluorine vents' };
+  const RICH = ['poor', 'normal', 'rich'];
+  const DEFAULT_RULES = {
+    weights: { nauvis: 30, vulcanus: 20, fulgora: 20, gleba: 20, aquilo: 20 },
+    gating: 'stage', stage2At: 4, stage3At: 12,
+    uraniumChance: 50, otherSpecial: 'guaranteed', otherChance: 60,
+    richness: { poor: 30, normal: 50, rich: 20 },
+    foresight: 'type',
+    pity: 'off', pityN: 6,
+    skipEnabled: true, scannerPerHour: 2, scannerCap: 8
+  };
+
+  function clone(x) { return JSON.parse(JSON.stringify(x)); }
+  function makeRules(o) {
+    const r = clone(DEFAULT_RULES);
+    o = o || {};
+    Object.keys(o).forEach(function (k) {
+      if (o[k] && typeof o[k] === 'object') Object.assign(r[k], o[k]); else r[k] = o[k];
+    });
+    return r;
+  }
+  function depth(rules) { return { none: 0, type: 1, typeRes: 1, two: 2 }[rules.foresight] || 0; }
+  function seesResources(rules) { return rules.foresight === 'typeRes' || rules.foresight === 'two'; }
+  function stageFor(rules, visits) {
+    if (rules.gating === 'none') return 3;
+    return visits >= rules.stage3At ? 3 : visits >= rules.stage2At ? 2 : 1;
+  }
+  function allowedTypes(stage) { return stage === 1 ? ['nauvis'] : stage === 2 ? TYPES.slice(0, 4) : TYPES.slice(); }
+
+  // Seeded RNG (mulberry32). Mutates the state's rng field, so call it on a clone only.
+  function hashSeed(seed) {
+    const str = String(seed); let h = 2166136261;
+    for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+    return h | 0;
+  }
+  function rand(s) {
+    s.rng = (s.rng + 0x6D2B79F5) | 0;
+    let t = Math.imul(s.rng ^ (s.rng >>> 15), 1 | s.rng);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  function pick(s, keys, weights) {
+    let total = 0; keys.forEach(function (k) { total += Math.max(0, weights[k] || 0); });
+    const r = rand(s);
+    if (total <= 0) return keys[0];
+    let x = r * total;
+    for (let i = 0; i < keys.length; i++) { x -= Math.max(0, weights[keys[i]] || 0); if (x < 0) return keys[i]; }
+    return keys[keys.length - 1];
+  }
+
+  // Roll the planet that would arrive at position pos (0 = first arrival).
+  function roll(s, pos) {
+    const rules = s.rules, allowed = allowedTypes(s.stage);
+    const seq = s.history.filter(function (p) { return !p.skipped; }).concat(s.queue).filter(function (p) { return p.arrival < pos; });
+    let forced = null, forceUranium = false;
+    if (rules.pity === 'on') {
+      let best = -1;
+      allowed.forEach(function (t) {
+        let last = -1; seq.forEach(function (p) { if (p.type === t) last = Math.max(last, p.arrival); });
+        const gap = pos - Math.max(last + 1, s.unlocked[t] || 0);
+        if (gap >= rules.pityN && gap > best) { best = gap; forced = t; }
+      });
+      if (allowed.indexOf('nauvis') >= 0) {
+        let lastU = -1; seq.forEach(function (p) { if (p.specials.indexOf('uranium') >= 0) lastU = Math.max(lastU, p.arrival); });
+        if (pos - Math.max(lastU + 1, s.unlocked.nauvis || 0) >= rules.pityN) {
+          if (forced === null) forced = 'nauvis';
+          if (forced === 'nauvis') forceUranium = true;
+        }
+      }
+    }
+    const drawn = pick(s, allowed, rules.weights);
+    const type = forced || drawn;
+    const richness = pick(s, RICH, rules.richness);
+    const r = rand(s) * 100;
+    let specials = [];
+    if (type === 'nauvis') { if (forceUranium || r < rules.uraniumChance) specials = ['uranium']; }
+    else if (rules.otherSpecial === 'guaranteed' || r < rules.otherChance) specials = INFO[type].specials.slice();
+    return { index: null, arrival: pos, type: type, richness: richness, specials: specials, skipped: false, visited: false, pity: !!forced && forced !== drawn };
+  }
+
+  function fill(s) { while (s.queue.length < depth(s.rules)) s.queue.push(roll(s, s.arrivals + s.queue.length)); }
+  function recount(s) {
+    const real = s.history.filter(function (p) { return !p.skipped; });
+    const allowed = allowedTypes(s.stage);
+    s.since = {};
+    TYPES.forEach(function (t) {
+      if (allowed.indexOf(t) < 0) { s.since[t] = null; return; }
+      let last = -1; real.forEach(function (p) { if (p.type === t) last = p.arrival; });
+      s.since[t] = last < 0 ? s.arrivals - (s.unlocked[t] || 0) : s.arrivals - 1 - last;
+    });
+    let lastU = -1; real.forEach(function (p) { if (p.specials.indexOf('uranium') >= 0) lastU = p.arrival; });
+    s.sinceUranium = lastU < 0 ? s.arrivals : s.arrivals - 1 - lastU;
+  }
+  function describe(p) {
+    const sp = p.specials.map(function (k) { return SPECIAL_LABEL[k]; });
+    return INFO[p.type].name + ', ' + p.richness + (sp.length ? ', with ' + sp.join(' and ') : ', no special');
+  }
+
+  function initState(rules, seed) {
+    const r = makeRules(rules);
+    const s = { rules: r, seed: String(seed), rng: hashSeed(seed), stage: stageFor(r, 0), visits: 0, arrivals: 0, hours: 0,
+      scanner: Math.min(r.scannerCap, r.scannerPerHour), skips: 0, history: [], queue: [], live: [], unlocked: {}, since: {}, sinceUranium: 0, changes: [] };
+    rand(s); rand(s);
+    allowedTypes(s.stage).forEach(function (t) { s.unlocked[t] = 0; });
+    fill(s); recount(s);
+    s.changes = ['New run with seed ' + s.seed + '.'];
+    return s;
+  }
+
+  function newestUnvisitedLive(s) {
+    for (let i = s.live.length - 1; i >= 0; i--) { const p = s.history[s.live[i]]; if (!p.visited && !p.skipped) return p; }
+    return null;
+  }
+
+  function reducer(state, action) {
+    const s = clone(state); s.changes = [];
+    switch (action.type) {
+      case 'RESET': return initState(action.rules, action.seed);
+      case 'ARRIVE': {
+        const p = s.queue.length ? s.queue.shift() : roll(s, s.arrivals);
+        s.arrivals++; p.index = s.history.length; s.history.push(p); s.live.push(p.index);
+        s.changes.push('Planet ' + (p.index + 1) + ' arrives: ' + describe(p) + (p.pity ? ' (pity rule forced this type)' : '') + '.');
+        if (s.live.length > 2) { const gone = s.live.shift(); s.changes.push('Only two planets stay live, so planet ' + (gone + 1) + ' (' + INFO[s.history[gone].type].name + ') is gone.'); }
+        fill(s); recount(s); return s;
+      }
+      case 'LAND': {
+        const p = action.index != null ? s.history[action.index] : newestUnvisitedLive(s);
+        if (!p || p.visited || p.skipped) { s.changes.push('There is no unvisited live planet to land on.'); return s; }
+        p.visited = true; s.visits++;
+        s.changes.push('Landed on planet ' + (p.index + 1) + '. Planets visited: ' + s.visits + '.');
+        const ns = stageFor(s.rules, s.visits);
+        if (ns > s.stage) {
+          const before = allowedTypes(s.stage);
+          s.stage = ns;
+          const added = allowedTypes(ns).filter(function (t) { return before.indexOf(t) < 0; });
+          added.forEach(function (t) { s.unlocked[t] = s.arrivals; });
+          s.changes.push('Stage ' + ns + ' reached. Now appearing: ' + added.map(function (t) { return INFO[t].name; }).join(', ') + '.');
+          if (s.queue.length) { s.queue = []; fill(s); s.changes.push('Planets not yet arrived were re-rolled for the new stage.'); }
+        }
+        recount(s); return s;
+      }
+      case 'SKIP': {
+        if (!s.rules.skipEnabled) { s.changes.push('Skipping is switched off in the rules.'); return s; }
+        if (s.scanner < 1) { s.changes.push('No scanner charge left. Advance an hour to recharge.'); return s; }
+        const target = action.target || (s.queue.length ? 'next' : 'live');
+        if (target === 'next') {
+          if (!s.queue.length) { s.changes.push('There is no next planet to skip.'); return s; }
+          const old = s.queue[0]; s.scanner--; s.skips++;
+          s.queue[0] = roll(s, old.arrival);
+          s.changes.push('Scanner used on the next planet. It was ' + INFO[old.type].name + ' and is now re-rolled.');
+        } else {
+          const p = newestUnvisitedLive(s);
+          if (!p) { s.changes.push('There is no live planet to skip.'); return s; }
+          s.scanner--; s.skips++; p.skipped = true; s.live.splice(s.live.indexOf(p.index), 1);
+          const n = roll(s, p.arrival); n.index = s.history.length; s.history.push(n); s.live.push(n.index);
+          s.changes.push('Scanner used on planet ' + (p.index + 1) + ' (' + INFO[p.type].name + '). It was skipped and re-rolled as planet ' + (n.index + 1) + ': ' + describe(n) + '.');
+        }
+        recount(s); return s;
+      }
+      case 'ADVANCE_HOUR': {
+        s.hours++; const before = s.scanner;
+        s.scanner = Math.min(s.rules.scannerCap, s.scanner + s.rules.scannerPerHour);
+        s.changes.push('One hour passes. Scanner charges ' + before + ' to ' + s.scanner + '.');
+        return s;
+      }
+    }
+    return s;
+  }
+
+  // Player model used by simulate and the walkthroughs. policy = { want: 'aquilo' | 'uranium', until: 'found' | 'always' } or null.
+  function wanted(p, want) { return want === 'aquilo' ? p.type === 'aquilo' : p.specials.indexOf('uranium') >= 0; }
+  function wantedFromHistory(s, want) { return s.history.some(function (p) { return !p.skipped && wanted(p, want); }); }
+  function wantActive(s, policy) {
+    if (!policy || !policy.want || !s.rules.skipEnabled) return false;
+    const ok = policy.want === 'aquilo' ? allowedTypes(s.stage).indexOf('aquilo') >= 0 : allowedTypes(s.stage).indexOf('nauvis') >= 0;
+    return ok && !(policy.until !== 'always' && wantedFromHistory(s, policy.want));
+  }
+  function visibleMatch(s, p, want) {
+    if (want === 'aquilo') return p.type === 'aquilo';
+    return seesResources(s.rules) ? p.specials.indexOf('uranium') >= 0 : p.type === 'nauvis';
+  }
+  function turn(s, policy) {
+    const acc = [];
+    function step(st, a) { st = reducer(st, a); st.changes.forEach(function (c) { acc.push(c); }); return st; }
+    if (s.arrivals > 0 && s.arrivals % 4 === 0) s = step(s, { type: 'ADVANCE_HOUR' });
+    if (depth(s.rules) > 0) {
+      let g = 0;
+      while (wantActive(s, policy) && s.queue.length && !visibleMatch(s, s.queue[0], policy.want) && s.scanner >= 1 && g++ < 30) s = step(s, { type: 'SKIP', target: 'next' });
+    }
+    s = step(s, { type: 'ARRIVE' });
+    let g2 = 0;
+    while (wantActive(s, policy) && s.scanner >= 1 && g2++ < 30) {
+      const p = newestUnvisitedLive(s);
+      if (!p || wanted(p, policy.want)) break;
+      s = step(s, { type: 'SKIP', target: 'live' });
+    }
+    s = step(s, { type: 'LAND' });
+    s.changes = acc;
+    return s;
+  }
+  function play(s, n, policy) {
+    let all = [];
+    for (let i = 0; i < n; i++) { s = turn(s, policy); all = all.concat(s.changes); }
+    s.changes = all.slice(-14); return s;
+  }
+  function playUntil(s, want, max, policy) {
+    let i = 0, all = []; while (i++ < max && !wantedFromHistory(s, want)) { s = turn(s, policy); all = all.concat(s.changes); } s.changes = all.slice(-14); return s;
+  }
+
+  function stats(s) {
+    const n = s.arrivals, real = s.history.filter(function (p) { return !p.skipped; });
+    const out = { arrivals: n, skips: s.skips, visits: s.visits, uranium: real.filter(function (p) { return p.specials.indexOf('uranium') >= 0; }).length, perType: {} };
+    TYPES.forEach(function (t) {
+      const un = s.unlocked[t];
+      const pos = real.filter(function (p) { return p.type === t; }).map(function (p) { return p.arrival; });
+      if (un === undefined) { out.perType[t] = { count: 0, locked: true, longest: 0, longestHours: 0, avgGap: null }; return; }
+      let prev = un - 1; const gaps = [];
+      pos.forEach(function (p) { gaps.push(p - prev - 1); prev = p; });
+      const trailing = n - 1 - prev;
+      const longest = Math.max.apply(null, gaps.concat([trailing, 0]));
+      const avg = gaps.length ? gaps.reduce(function (a, b) { return a + b; }, 0) / gaps.length : null;
+      out.perType[t] = { count: pos.length, locked: false, longest: longest, longestHours: longest * 0.25, avgGap: avg, avgHours: avg === null ? null : avg * 0.25, firstWait: gaps.length ? gaps[0] : null };
+    });
+    return out;
+  }
+  function simulate(rules, seed, planets, policy) {
+    const s = play(initState(rules, seed), planets, policy || null);
+    return { state: s, stats: stats(s) };
+  }
+  function worstCase(rules, seeds, planets) {
+    const worst = {};
+    TYPES.forEach(function (t) { worst[t] = { longest: 0, seed: null, locked: true }; });
+    for (let sd = 1; sd <= seeds; sd++) {
+      const st = simulate(rules, sd, planets).stats;
+      TYPES.forEach(function (t) {
+        const x = st.perType[t]; if (x.locked) return;
+        worst[t].locked = false;
+        if (x.longest > worst[t].longest || worst[t].seed === null) { worst[t].longest = x.longest; worst[t].seed = sd; }
+      });
+    }
+    return worst;
+  }
+  // Planets that passed between unlock and the first planet with the wanted type or special, over many seeds.
+  function firstWait(rules, seeds, planets, policy, want) {
+    const waits = []; let missing = 0;
+    for (let sd = 1; sd <= seeds; sd++) {
+      const s = simulate(rules, sd, planets, policy).state;
+      const first = s.history.filter(function (p) { return !p.skipped && wanted(p, want); })[0];
+      if (!first) { missing++; continue; }
+      waits.push(first.arrival - (s.unlocked[want === 'aquilo' ? 'aquilo' : 'nauvis'] || 0));
+    }
+    const avg = waits.length ? waits.reduce(function (a, b) { return a + b; }, 0) / waits.length : null;
+    return { runs: seeds, avg: avg, avgHours: avg === null ? null : avg * 0.25, worst: waits.length ? Math.max.apply(null, waits) : null, missing: missing };
+  }
+
+  // ---- Walkthroughs (data only). Step fields: label, text, reset {rules, seed}, play n, until {want, max}, policy, extra. ----
+  const R = makeRules;
+  function arriveSteps(n, first) {
+    const out = [];
+    for (let i = 1; i <= n; i++) out.push({ label: 'Planet ' + (first + i - 1) + ' arrives, land', play: 1 });
+    return out;
+  }
+  const WALKTHROUGHS = [
+    { id: 'early', title: 'Early game', seed: 3, rules: R({ foresight: 'none' }),
+      intro: 'Stage gating on, no foresight. The first four visits can only be Nauvis-like. Watch the uranium rolls and when other types open up.',
+      steps: [{ label: 'Start run', text: 'Stage 1 allows only Nauvis-like planets until 4 planets have been visited.', reset: true }].concat(arriveSteps(6, 1)) },
+    { id: 'uranium', title: 'Hunting uranium', seed: 21, rules: R({ gating: 'none', foresight: 'none', pity: 'off', skipEnabled: false }),
+      intro: 'No gating, no foresight, no skipping. Uranium needs a Nauvis-like planet and a 50% roll. First play with no pity, then the same seed with pity at 6.',
+      steps: [
+        { label: 'No pity: start', text: 'Same seed, pity off.', reset: true },
+        { label: 'Play 6 planets', play: 6 },
+        { label: 'Play 6 more', play: 6 },
+        { label: 'Play 6 more', play: 6 },
+        { label: 'Pity on: start again', text: 'Same seed and rules, with the pity rule at 6.', reset: { rules: R({ gating: 'none', foresight: 'none', pity: 'on', pityN: 6, skipEnabled: false }) } },
+        { label: 'Play 6 planets', play: 6 },
+        { label: 'Play 12 more', play: 12 },
+        { label: 'Compare over 40 runs', text: 'Planets that arrive before the first uranium planet, 40 seeds of 80 planets each.',
+          extra: { kind: 'compare', what: 'uranium', seeds: 40, planets: 80, variants: [
+            { label: 'No pity', rules: R({ gating: 'none', foresight: 'none', pity: 'off', skipEnabled: false }) },
+            { label: 'Pity at 6', rules: R({ gating: 'none', foresight: 'none', pity: 'on', pityN: 6, skipEnabled: false }) },
+            { label: 'No pity, resources of next planet shown, skip with scanner', rules: R({ gating: 'none', foresight: 'typeRes', pity: 'off' }), policy: { want: 'uranium', until: 'found' } }
+          ] } }
+      ] },
+    { id: 'aquilo', title: 'Waiting for Aquilo', seed: 4, rules: R({ foresight: 'none', skipEnabled: false }),
+      intro: 'Stage gating on. Aquilo-like planets open after 12 visits. How long until the first one shows up, with and without foresight and scanner skips.',
+      steps: [
+        { label: 'Land on 12 planets', text: 'Stage 3 opens after the twelfth visit. The count of planets without Aquilo starts there.', reset: true, play: 12 },
+        { label: 'Play until Aquilo', until: { want: 'aquilo', max: 80 }, text: 'No foresight, no skipping.' },
+        { label: 'Again: next type shown', text: 'Same seed, foresight shows the next type. Nothing else changes, so the wait is the same unless the shown planets are re-rolled.', reset: { rules: R({ foresight: 'type', skipEnabled: false }) }, play: 12, until: { want: 'aquilo', max: 80 } },
+        { label: 'Again: foresight and skipping', text: 'The player skips every shown planet that is not Aquilo-like while scanner charges last.', reset: { rules: R({ foresight: 'type' }) }, play: 12, until: { want: 'aquilo', max: 80 }, policy: { want: 'aquilo', until: 'found' } },
+        { label: 'Compare over 40 runs', text: 'Planets between unlock and the first Aquilo-like planet, 40 seeds of 80 planets each.',
+          extra: { kind: 'compare', what: 'aquilo', seeds: 40, planets: 80, variants: [
+            { label: 'No foresight, no skipping', rules: R({ foresight: 'none', skipEnabled: false }) },
+            { label: 'Next type shown, no skipping', rules: R({ foresight: 'type', skipEnabled: false }) },
+            { label: 'No foresight, skip with scanner', rules: R({ foresight: 'none' }), policy: { want: 'aquilo', until: 'found' } },
+            { label: 'Next type shown, skip with scanner', rules: R({ foresight: 'type' }), policy: { want: 'aquilo', until: 'found' } },
+            { label: 'Next two shown, skip with scanner', rules: R({ foresight: 'two' }), policy: { want: 'aquilo', until: 'found' } },
+            { label: 'No foresight, no skipping, pity at 6', rules: R({ foresight: 'none', skipEnabled: false, pity: 'on', pityN: 6 }) }
+          ] } }
+      ] },
+    { id: 'random', title: 'Pure random', seed: 2, rules: R({ gating: 'none', pity: 'off', foresight: 'none', skipEnabled: false }),
+      intro: 'No gating, no pity, no foresight, no skipping. Every type is open from the start. The point is the worst-case gaps.',
+      steps: [
+        { label: 'Start run', reset: true, text: 'Every planet type can appear from planet 1.' },
+        { label: 'Play 10 planets', play: 10 },
+        { label: 'Campaign summary, 100 planets', text: 'One run of 100 planets with these rules.', extra: { kind: 'summary', planets: 100 } },
+        { label: 'Worst gaps over 40 runs', text: 'The longest wait for each type across 40 seeds of 100 planets each.', extra: { kind: 'worst', seeds: 40, planets: 100 } }
+      ] }
+  ];
+
+  // Replay a walkthrough from the start through step k (0-based index of last step to apply).
+  function runWalkthrough(wt, k) {
+    let s = initState(wt.rules, wt.seed), extra = null;
+    for (let i = 0; i <= k; i++) {
+      const st = wt.steps[i];
+      if (st.reset) s = initState(st.reset === true ? wt.rules : Object.assign({}, st.reset.rules || wt.rules), st.reset.seed || wt.seed);
+      if (st.play) s = play(s, st.play, st.policy || null);
+      if (st.until) s = playUntil(s, st.until.want, st.until.max, st.policy || null);
+      extra = null;
+      if (i === k && st.extra) extra = evalExtra(st.extra, wt, s);
+    }
+    return { state: s, step: wt.steps[k], extra: extra };
+  }
+  function evalExtra(x, wt, s) {
+    if (x.kind === 'summary') return { kind: 'summary', stats: simulate(s.rules, s.seed, x.planets).stats, rules: s.rules, seed: s.seed, planets: x.planets };
+    if (x.kind === 'worst') return { kind: 'worst', seeds: x.seeds, planets: x.planets, worst: worstCase(s.rules, x.seeds, x.planets) };
+    return { kind: 'compare', what: x.what, seeds: x.seeds, planets: x.planets, rows: x.variants.map(function (v) {
+      return { label: v.label, result: firstWait(v.rules, x.seeds, x.planets, v.policy || null, x.what) };
+    }) };
+  }
+
+  return { TYPES: TYPES, INFO: INFO, SPECIAL_LABEL: SPECIAL_LABEL, DEFAULT_RULES: DEFAULT_RULES, makeRules: makeRules, depth: depth, seesResources: seesResources,
+    allowedTypes: allowedTypes, initState: initState, reducer: reducer, play: play, simulate: simulate, stats: stats, worstCase: worstCase, firstWait: firstWait,
+    describe: describe, WALKTHROUGHS: WALKTHROUGHS, runWalkthrough: runWalkthrough };
+})();
+</script>
+
+<!-- Page code: reads and writes the DOM, calls Logic only. -->
+<script id="ui">
+(function () {
+  'use strict';
+  var L = Logic;
+  function $(id) { return document.getElementById(id); }
+  var rules = L.makeRules();
+  var fp = L.initState(rules, '1');
+
+  // ---- rules form ----
+  var NUM_IDS = ['stage2At', 'stage3At', 'uraniumChance', 'otherChance', 'pityN', 'scannerPerHour', 'scannerCap'];
+  function writeRules(r) {
+    L.TYPES.forEach(function (t) { $('w_' + t).value = r.weights[t]; });
+    ['poor', 'normal', 'rich'].forEach(function (k) { $('r_' + k).value = r.richness[k]; });
+    NUM_IDS.forEach(function (id) { $(id).value = r[id]; });
+    ['gating', 'otherSpecial', 'foresight', 'pity'].forEach(function (id) { $(id).value = r[id]; });
+    $('skipEnabled').checked = r.skipEnabled;
+  }
+  function readRules() {
+    var o = { weights: {}, richness: {} };
+    L.TYPES.forEach(function (t) { o.weights[t] = Math.max(0, Number($('w_' + t).value) || 0); });
+    ['poor', 'normal', 'rich'].forEach(function (k) { o.richness[k] = Math.max(0, Number($('r_' + k).value) || 0); });
+    NUM_IDS.forEach(function (id) { o[id] = Math.max(0, Number($(id).value) || 0); });
+    o.pityN = Math.max(1, o.pityN); o.scannerCap = Math.max(1, o.scannerCap);
+    ['gating', 'otherSpecial', 'foresight', 'pity'].forEach(function (id) { o[id] = $(id).value; });
+    o.skipEnabled = $('skipEnabled').checked;
+    return L.makeRules(o);
+  }
+
+  // ---- rendering helpers ----
+  function name(t) { return L.INFO[t].name; }
+  function hours(planets) { return (planets * 0.25).toFixed(2).replace(/\.?0+$/, '') + ' h'; }
+  function card(p, mode, tag) {
+    var h = '<div class="card' + (mode === 'live' ? ' live' : '') + '"><div class="tag">' + tag + '</div><div class="name">' + name(p.type) + '</div>';
+    if (mode === 'type') return h + '<div class="muted small">Resources not shown.</div></div>';
+    var i = L.INFO[p.type];
+    h += '<div class="small">Richness: ' + p.richness + '</div>';
+    h += '<div class="small">Offers: ' + i.resources.join(', ') + '</div>';
+    var sp = L.INFO[p.type].specials.map(function (k) {
+      var has = p.specials.indexOf(k) >= 0;
+      return has ? '<span class="special">' + L.SPECIAL_LABEL[k] + '</span>' : '<span class="muted">no ' + L.SPECIAL_LABEL[k] + '</span>';
+    });
+    h += '<div class="small">Special: ' + sp.join(', ') + '</div>';
+    h += '<div class="small muted">Enemies: ' + i.enemies + (i.science ? '. Lets you make ' + i.science + ' science.' : '.') + '</div>';
+    if (mode === 'live') h += '<div class="small">' + (p.visited ? 'Landed.' : 'Waiting for someone to land.') + '</div>';
+    return h + '</div>';
+  }
+  function stateHTML(s) {
+    var r = s.rules, h = '';
+    var stageText = r.gating === 'none' ? 'Gating off, every type can appear' :
+      'Stage ' + s.stage + ' of 3 (' + L.allowedTypes(s.stage).map(name).join(', ') + ')';
+    h += '<div class="facts"><span>Stage: <b>' + stageText + '</b></span><span>Planets visited: <b>' + s.visits + '</b></span>' +
+      '<span>Scanner charges: <b>' + s.scanner + ' of ' + r.scannerCap + '</b></span><span>Planets arrived: <b>' + s.arrivals + '</b></span><span>Hours advanced: <b>' + s.hours + '</b></span></div>';
+    if (s.changes.length) h += '<div class="changed"><b>What just changed</b><ul>' + s.changes.map(function (c) { return '<li>' + c + '</li>'; }).join('') + '</ul></div>';
+    h += '<h3>Coming up</h3>';
+    if (!s.queue.length) h += '<div class="muted small">No foresight. A planet is revealed only when it arrives.</div>';
+    else h += '<div class="cards">' + s.queue.map(function (p, i) { return card(p, r.foresight === 'type' ? 'type' : 'full', i === 0 ? 'Next planet' : 'After that'); }).join('') + '</div>';
+    h += '<h3>Live planets</h3>';
+    if (!s.live.length) h += '<div class="muted small">None yet.</div>';
+    else h += '<div class="cards">' + s.live.map(function (i) { return card(s.history[i], 'live', 'Planet ' + (i + 1)); }).join('') + '</div>';
+    h += '<h3>Planets since last seen</h3><table><tr>' + L.TYPES.map(function (t) { return '<th>' + name(t) + '</th>'; }).join('') + '<th>Uranium</th></tr><tr>' +
+      L.TYPES.map(function (t) { return '<td>' + (s.since[t] === null ? 'locked' : s.since[t]) + '</td>'; }).join('') + '<td>' + s.sinceUranium + '</td></tr></table>';
+    if (s.history.length) {
+      h += '<h3>History</h3><div class="scroll"><table><tr><th>#</th><th>Type</th><th>Richness</th><th>Specials</th><th>Skipped</th></tr>' +
+        s.history.slice().reverse().map(function (p) {
+          return '<tr><td>' + (p.index + 1) + '</td><td>' + name(p.type) + '</td><td>' + p.richness + '</td><td>' + (p.specials.map(function (k) { return L.SPECIAL_LABEL[k]; }).join(', ') || 'none') + '</td><td>' + (p.skipped ? 'yes' : '') + '</td></tr>';
+        }).join('') + '</table></div>';
+    }
+    return h;
+  }
+  function summaryHTML(st, planets) {
+    var h = '<div class="facts"><span>Planets: <b>' + st.arrivals + '</b> (about ' + hours(st.arrivals) + ')</span><span>Uranium planets: <b>' + st.uranium + '</b></span></div>';
+    h += '<table><tr><th>Type</th><th>Planets</th><th>Longest gap, planets</th><th>Longest gap, hours</th></tr>';
+    L.TYPES.forEach(function (t) {
+      var x = st.perType[t];
+      h += '<tr><td>' + name(t) + '</td><td>' + x.count + '</td><td>' + (x.locked ? 'never unlocked' : x.longest) + '</td><td>' + (x.locked ? '' : hours(x.longest)) + '</td></tr>';
+    });
+    h += '</table>';
+    var a = st.perType.aquilo;
+    h += '<p>Average wait for Aquilo-like after it unlocks: ' + (a.locked ? 'it never unlocked in this run.' : a.avgGap === null ? 'it never appeared.' : '<b>' + a.avgGap.toFixed(1) + ' planets (' + hours(a.avgGap) + ')</b>, from ' + a.count + ' appearances.') + '</p>';
+    h += '<pre>' + L.TYPES.map(function (t) {
+      var c = st.perType[t].count, label = name(t);
+      while (label.length < 15) label += ' ';
+      return label + new Array(Math.round(c / 2) + 1).join('█') + ' ' + c;
+    }).join('\n') + '\n(one block is 2 planets)</pre>';
+    return h;
+  }
+  function rulesLine(r) {
+    var w = L.TYPES.map(function (t) { return name(t).replace('-like', '') + ' ' + r.weights[t]; }).join(', ');
+    return 'Weights: ' + w + '. Gating: ' + (r.gating === 'none' ? 'none' : 'stages at ' + r.stage2At + ' and ' + r.stage3At + ' visits') +
+      '. Uranium ' + r.uraniumChance + '%. Other specials ' + (r.otherSpecial === 'guaranteed' ? 'always' : r.otherChance + '%') +
+      '. Foresight: ' + ({ none: 'none', type: 'next type', typeRes: 'next type and resources', two: 'next two' })[r.foresight] +
+      '. Pity: ' + (r.pity === 'on' ? 'at ' + r.pityN : 'off') + '. Skipping: ' + (r.skipEnabled ? r.scannerPerHour + ' charges per hour' : 'off') + '.';
+  }
+
+  // ---- free play ----
+  function renderFree() { $('fpState').innerHTML = stateHTML(fp); }
+  function renderSummary() {
+    var sd = $('seed').value || '1';
+    $('summary').innerHTML = summaryHTML(L.simulate(rules, sd, 100).stats, 100);
+  }
+  function act(a) { fp = L.reducer(fp, a); renderFree(); }
+  function restart() { fp = L.initState(rules, $('seed').value || '1'); renderFree(); renderSummary(); }
+  $('bArrive').onclick = function () { act({ type: 'ARRIVE' }); };
+  $('bLand').onclick = function () { act({ type: 'LAND' }); };
+  $('bSkip').onclick = function () { act({ type: 'SKIP' }); };
+  $('bHour').onclick = function () { act({ type: 'ADVANCE_HOUR' }); };
+  $('bReset').onclick = restart;
+  $('seed').onchange = restart;
+  $('rulesPanel').addEventListener('change', function () { rules = readRules(); restart(); });
+  $('rulesDefault').onclick = function () { rules = L.makeRules(); writeRules(rules); restart(); };
+
+  // ---- walkthroughs ----
+  var curTab = 0, curStep = 0;
+  function renderTabs() {
+    $('wtTabs').innerHTML = L.WALKTHROUGHS.map(function (w, i) { return '<button data-tab="' + i + '" class="' + (i === curTab ? 'on' : '') + '">' + w.title + '</button>'; }).join('');
+    Array.prototype.forEach.call($('wtTabs').querySelectorAll('button'), function (b) {
+      b.onclick = function () { curTab = Number(b.getAttribute('data-tab')); curStep = 0; renderWt(); renderTabs(); };
+    });
+  }
+  function extraHTML(x) {
+    if (!x) return '';
+    if (x.kind === 'summary') return '<h3>Campaign summary (seed ' + x.seed + ')</h3>' + summaryHTML(x.stats, x.planets);
+    if (x.kind === 'worst') {
+      var h = '<h3>Worst gaps over ' + x.seeds + ' runs of ' + x.planets + ' planets</h3><table><tr><th>Type</th><th>Longest gap, planets</th><th>Longest gap, hours</th><th>Seed that did it</th></tr>';
+      L.TYPES.forEach(function (t) { var w = x.worst[t]; h += '<tr><td>' + name(t) + '</td><td>' + w.longest + '</td><td>' + hours(w.longest) + '</td><td>' + w.seed + '</td></tr>'; });
+      return h + '</table>';
+    }
+    var what = x.what === 'aquilo' ? 'first Aquilo-like planet' : 'first uranium planet';
+    var t = '<h3>Planets passing before the ' + what + ' (' + x.seeds + ' runs)</h3><table><tr><th>Setup</th><th>Average, planets</th><th>Average, hours</th><th>Worst run, planets</th><th>Runs with none</th></tr>';
+    x.rows.forEach(function (r) {
+      var q = r.result;
+      t += '<tr><td>' + r.label + '</td><td>' + (q.avg === null ? '-' : q.avg.toFixed(1)) + '</td><td>' + (q.avgHours === null ? '-' : q.avgHours.toFixed(1)) + '</td><td>' + (q.worst === null ? '-' : q.worst) + '</td><td>' + q.missing + '</td></tr>';
+    });
+    return t + '</table>';
+  }
+  function renderWt() {
+    var wt = L.WALKTHROUGHS[curTab];
+    var res = L.runWalkthrough(wt, curStep);
+    var h = '<p>' + wt.intro + '</p><div class="muted small">Seed ' + wt.seed + '. ' + rulesLine(res.state.rules) + '</div><div class="steps">';
+    h += wt.steps.map(function (st, i) { return '<button data-step="' + i + '" class="' + (i === curStep ? 'on' : '') + '">' + (i + 1) + '. ' + st.label + '</button>'; }).join('');
+    h += '</div>';
+    if (res.step.text) h += '<div class="note">' + res.step.text + '</div>';
+    h += extraHTML(res.extra) + stateHTML(res.state);
+    $('wtBody').innerHTML = h;
+    Array.prototype.forEach.call($('wtBody').querySelectorAll('button[data-step]'), function (b) {
+      b.onclick = function () { curStep = Number(b.getAttribute('data-step')); renderWt(); };
+    });
+  }
+
+  writeRules(rules); renderFree(); renderSummary(); renderTabs(); renderWt();
+})();
+</script>
+</body>
+</html>
