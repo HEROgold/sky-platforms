@@ -21,7 +21,7 @@ Decided on 2026-11-15:
 ## Behaviour
 
 1. A new game creates one platform at game start, owned by the first player's force, orbiting `sky-drift`.
-2. The platform hub holds the kit: 4 `asteroid-collector`, 4 `crusher`, 4 `assembling-machine-1`, 4 `stone-furnace`, 2 `lab`, `solar-panel` x 20, `inserter` x 40, `transport-belt` x 100, `space-platform-foundation` x 50, 1 `thud-inertial-damper`. The `sky-platforms-kit-scale` setting multiplies the panels, inserters, belts and foundations. Amounts are in Control stage, Kit.
+2. The platform hub holds the kit: 4 `asteroid-collector`, 4 `crusher`, 4 `assembling-machine-1`, 4 `stone-furnace`, 2 `lab`, `solar-panel` x 20, `inserter` x 40, `transport-belt` x 100, `space-platform-foundation` x 180, 1 `thud-inertial-damper`. The `sky-platforms-kit-scale` setting multiplies the panels, inserters, belts and foundations. Amounts are in Control stage, Kit.
 3. Each player's character wears one `mech-armor` from its first spawn. The hub holds none. See statement 4.
 4. The mod inserts the armor into the character's armor inventory (`defines.inventory.character_armor`), not into the hub. start-and-respawn gives the armor (its Control stage, `give_armor`).
 5. The player stands on the platform, not on Nauvis (via #6, slice 1).
@@ -159,7 +159,7 @@ Techs that list `space-platform-thruster` as a prerequisite (`technology.lua:383
 
 `sky-salvage-thruster` is the early thruster. It has three parts:
 
-- Entity: a copy of the vanilla `thruster` entity (`data.raw.thruster.thruster`), renamed, with lower performance. Performance is `TBD (proposed: 50% of the vanilla thruster's max performance)`. The field name is from memory and not checked, so confirm it in slice 3.
+- Entity: a copy of the vanilla `thruster` entity (`data.raw.thruster.thruster`), renamed, with lower performance. Performance is 50% of vanilla (decided 2026-11-16): `max_performance.fluid_usage` is halved from 2 to 1, the other fields stay vanilla. The field name is from memory and not checked, so confirm it in slice 3.
 - Item: `sky-salvage-thruster`, placed as the entity above.
 - Recipe `sky-salvage-thruster`: 10 `steel-plate`, 10 `electronic-circuit`, 10 `iron-gear-wheel`, 5 `pipe`.
 
@@ -254,7 +254,7 @@ local KIT = {
   { name = "solar-panel", count = 20 },
   { name = "inserter", count = 40 },
   { name = "transport-belt", count = 100 },
-  { name = "space-platform-foundation", count = 50 },
+  { name = "space-platform-foundation", count = 180 }, -- room for 6 electric furnaces, 4 collectors, 3 crushers, 5 tiles each,
   { name = "thud-inertial-damper", count = 1 },
 }
 ```
@@ -351,7 +351,7 @@ Acceptance criteria:
 - [ ] A crusher set to `sky-oxide-crushing-stone` outputs the configured stone per chunk.
 - [ ] Both yields are below the matching vanilla recipe yields (iron 20 for metallic).
 - [ ] Vanilla crushing recipes are unchanged.
-- [ ] The two startup settings change the yields.
+- [ ] Yields are fixed at 6 copper and 6 stone (no yield settings, decided 2026-11-15).
 
 Path to prod:
 
@@ -412,7 +412,7 @@ Decided 2026-11-15. These moved here from the open list:
 
 Still open:
 
-- `TBD (proposed: 50% of the vanilla thruster's max performance)` performance of `sky-salvage-thruster`.
+- Decided 2026-11-16: `sky-salvage-thruster` has 50% of the vanilla thruster's max performance.
 - `TBD (proposed: -10, 5, 0.25)` `gravity_pull`, `distance` and `orientation` of `sky-drift`. Same pull as `solar-system-edge`. The others only place the icon, and #9 can move them.
 - Rounding of kit counts after `sky-platforms-kit-scale` multiplies them. Not decided.
 - Start tech names. `automation` is unverified, so check each name in `prototypes` before shipping.
