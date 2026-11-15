@@ -8,3 +8,4 @@ Date: 2026-11-15
     - The Drift gives the same solar power as the Nauvis orbit.
     - Steel furnaces run on space platforms. The kit has 4 steel furnaces instead of 4 stone furnaces.
     - You now start on a space platform, and new players join there.
+    - Dead players respawn on the home platform instead of Nauvis.

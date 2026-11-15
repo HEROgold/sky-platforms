@@ -230,6 +230,72 @@ local function check_character(player)
   check("Nauvis has no character left", #left == 0, #left)
 end
 
+local function check_respawned(player, label)
+  local character = player.character
+  if not (character and character.valid) then return end
+  local platform = character.surface.platform
+  check("respawn " .. label .. " lands on a platform surface", platform ~= nil, character.surface.name)
+  local hub = platform and platform.valid and platform.hub
+  if hub and hub.valid then
+    local d = math.sqrt((character.position.x - hub.position.x) ^ 2 + (character.position.y - hub.position.y) ^ 2)
+    check("respawn " .. label .. " within 5 tiles of hub", d <= 5, string.format("%.2f", d))
+  end
+  local tile = character.surface.get_tile(math.floor(character.position.x), math.floor(character.position.y))
+  check("respawn " .. label .. " tile is not empty-space", tile.valid and tile.name ~= "empty-space")
+  local armor = character.get_inventory(defines.inventory.character_armor)
+  local count = armor and armor.get_item_count("mech-armor") or -1
+  check("respawn " .. label .. " gives no new armor", count == 0, count)
+  local nauvis = game.surfaces["nauvis"]
+  local left = nauvis and nauvis.find_entities_filtered({ name = "character" }) or {}
+  check("respawn " .. label .. ": Nauvis has no character", #left == 0, #left)
+end
+
+local RESPAWN_WAIT_TICKS = 3600
+
+--- Kill the character and start the respawn clock.
+local function kill_step(label)
+  return function()
+    guarded("kill " .. label, function()
+      local player = game.get_player(storage.test.player)
+      local character = player and player.valid and player.character
+      check("character alive before " .. label .. " death", character ~= nil and character ~= false and character.valid)
+      if character and character.valid then
+        storage.test.death_tick = game.tick
+        character.die()
+      end
+    end)
+  end
+end
+
+--- Poll until the player has a character again, up to 60 s. Returns false to be called again.
+local function await_step(label)
+  return function()
+    local ok, result = pcall(function()
+      local player = game.get_player(storage.test.player)
+      if not (player and player.valid) then
+        check("respawn " .. label, false, "player invalid")
+        return true
+      end
+      local character = player.character
+      if character and character.valid then
+        check("respawn " .. label .. " after " .. (game.tick - storage.test.death_tick) .. " ticks", true)
+        check_respawned(player, label)
+        return true
+      end
+      if game.tick - storage.test.death_tick > RESPAWN_WAIT_TICKS then
+        check("respawn " .. label, false, "no character after 60 s")
+        return true
+      end
+      return false
+    end)
+    if not ok then
+      check("respawn " .. label, false, "error: " .. tostring(result))
+      return true
+    end
+    return result
+  end
+end
+
 local steps = {
   function()
     guarded("kit", function()
@@ -299,6 +365,10 @@ local steps = {
       player.clear_cursor()
     end)
   end,
+  kill_step("first"),
+  await_step("first"),
+  kill_step("second"),
+  await_step("second"),
 }
 
 local function finish()
@@ -343,7 +413,8 @@ script.on_nth_tick(STEP_TICKS, function()
     finish()
     return
   end
-  step()
-  test.step = test.step + 1
+  if step() ~= false then
+    test.step = test.step + 1
+  end
   test.next_tick = game.tick + STEP_TICKS
 end)
