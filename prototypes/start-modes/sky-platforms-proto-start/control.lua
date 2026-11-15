@@ -23,9 +23,13 @@ local function say(player, msg)
   end
 end
 
--- Runs fn under pcall and reports the outcome. Returns ok, result.
-local function try(player, label, fn, ...)
-  local ok, result = pcall(fn, ...)
+-- Runs fn (a closure) under pcall and reports the outcome. Returns ok, result.
+-- Factorio API methods use dot calls with no self, so always wrap them in a closure.
+---@param player LuaPlayer?
+---@param label string
+---@param fn fun(): any
+local function try(player, label, fn)
+  local ok, result = pcall(fn)
   if ok then
     say(player, label .. ": ok " .. tostring(result))
   else
@@ -50,15 +54,15 @@ end
 
 local function skip_freeplay()
   if remote.interfaces["freeplay"] then
-    pcall(remote.call, "freeplay", "set_skip_intro", true)
-    pcall(remote.call, "freeplay", "set_disable_crashsite", true)
+    pcall(function() remote.call("freeplay", "set_skip_intro", true) end)
+    pcall(function() remote.call("freeplay", "set_disable_crashsite", true) end)
     -- Question 11 in the research notes: does an empty map remove all starting items?
-    pcall(remote.call, "freeplay", "set_created_items", {})
+    pcall(function() remote.call("freeplay", "set_created_items", {}) end)
   end
 end
 
 local function unlock_platforms(force)
-  pcall(force.unlock_space_platforms, force)
+  pcall(function() force.unlock_space_platforms() end)
   local tech = force.technologies["space-platform"]
   if tech then tech.researched = true end
 end
@@ -78,13 +82,12 @@ local function ensure_platform(player)
   local platform = storage.platforms[force.index]
   if platform and platform.valid then return platform end
   unlock_platforms(force)
-  local ok, result = try(player, "create_space_platform", force.create_space_platform, force, {
-    planet = "nauvis",
-    starter_pack = "space-platform-starter-pack",
-  })
+  local ok, result = try(player, "create_space_platform", function()
+    return force.create_space_platform({ planet = "nauvis", starter_pack = "space-platform-starter-pack" })
+  end)
   if ok and result then
     storage.platforms[force.index] = result
-    try(player, "apply_starter_pack", result.apply_starter_pack, result)
+    try(player, "apply_starter_pack", function() return result.apply_starter_pack() end)
     return result
   end
   return nil
@@ -92,13 +95,13 @@ end
 
 local function fill_hub(player, platform)
   for _, item in pairs(HUB_ITEMS) do
-    try(player, "hub insert " .. item.name, platform.hub.insert, platform.hub, item)
+    try(player, "hub insert " .. item.name, function() return platform.hub.insert(item) end)
   end
 end
 
 local function spawn_position(platform)
   local hub = platform.hub
-  local ok, pos = pcall(platform.surface.find_non_colliding_position, platform.surface, "character", hub.position, 12, 0.5)
+  local ok, pos = pcall(function() return platform.surface.find_non_colliding_position("character", hub.position, 12, 0.5) end)
   if ok and pos then return pos end
   return { x = hub.position.x, y = hub.position.y + 4 }
 end
@@ -113,41 +116,41 @@ local function apply_mode(player, mode, platform)
   -- Drop a character left behind by an earlier mode, once the player no longer uses it.
   local function destroy_orphan(old)
     if old and old.valid and player.character ~= old then
-      try(player, "destroy old character", old.destroy, old)
+      try(player, "destroy old character", function() return old.destroy() end)
     end
   end
 
   if mode == "walk" then
     local old = player.character
     local pos = spawn_position(platform)
-    local ok, char = try(player, "create_entity character", surface.create_entity, surface, {
-      name = "character", position = pos, force = player.force,
-    })
+    local ok, char = try(player, "create_entity character", function()
+      return surface.create_entity({ name = "character", position = pos, force = player.force })
+    end)
     if ok and char then
-      try(player, "set_controller character", player.set_controller, player, {
-        type = defines.controllers.character, character = char,
-      })
+      try(player, "set_controller character", function()
+        return player.set_controller({ type = defines.controllers.character, character = char })
+      end)
       storage.walkers[player.index] = ""
       destroy_orphan(old)
     end
   elseif mode == "god" then
     local old = player.character
-    try(player, "set_controller god", player.set_controller, player, { type = defines.controllers.god })
+    try(player, "set_controller god", function() return player.set_controller({ type = defines.controllers.god }) end)
     destroy_orphan(old)
-    try(player, "teleport to platform", player.teleport, player, spawn_position(platform), surface)
+    try(player, "teleport to platform", function() return player.teleport(spawn_position(platform), surface) end)
     storage.walkers[player.index] = nil
   elseif mode == "remote" then
     -- Make sure no body is left. Go through god so the old character is detached first.
     local old = player.character
     if old then
-      try(player, "set_controller god (detach body)", player.set_controller, player, { type = defines.controllers.god })
+      try(player, "set_controller god (detach body)", function() return player.set_controller({ type = defines.controllers.god }) end)
       destroy_orphan(old)
     end
-    try(player, "enter_space_platform", player.enter_space_platform, player, platform)
+    try(player, "enter_space_platform", function() return player.enter_space_platform(platform) end)
     if player.controller_type ~= defines.controllers.remote then
-      try(player, "set_controller remote", player.set_controller, player, {
-        type = defines.controllers.remote, surface = surface, position = hub_pos,
-      })
+      try(player, "set_controller remote", function()
+        return player.set_controller({ type = defines.controllers.remote, surface = surface, position = hub_pos })
+      end)
     end
     storage.walkers[player.index] = nil
   end
@@ -218,7 +221,7 @@ script.on_nth_tick(15, function()
   for index, last in pairs(storage.walkers) do
     local player = game.get_player(index)
     if player and player.valid and player.character then
-      local ok, tile = pcall(player.surface.get_tile, player.surface, player.position)
+      local ok, tile = pcall(function() return player.surface.get_tile(math.floor(player.position.x), math.floor(player.position.y)) end)
       if ok and tile and tile.name ~= last then
         storage.walkers[index] = tile.name
         say(player, "walk: standing on tile '" .. tile.name .. "' at "
