@@ -1,0 +1,5 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.1.0
+Date: 2026-11-15
+  Features:
+    - New games start on a space platform orbiting the Drift, with a starting kit.

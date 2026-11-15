@@ -1,0 +1,9 @@
+{
+  "name": "sky-platforms-test",
+  "version": "0.1.0",
+  "title": "Sky Platforms self-test",
+  "author": "HEROgold",
+  "factorio_version": "2.1",
+  "description": "Checks the acceptance criteria of Sky Platforms by script. Not for play.",
+  "dependencies": ["sky-platforms"]
+}
