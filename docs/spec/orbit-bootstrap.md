@@ -223,7 +223,7 @@ local function bootstrap(force)
   for _, stack in pairs(KIT) do
     hub.insert(stack)
   end
-  storage.home_platform[force.index] = platform.index
+  storage.home_platform[force.index] = registry.register(platform)  -- stable platform ID, see planet-lifecycle.md
   set_start_research(force)
   storage.bootstrap_done = true
 end

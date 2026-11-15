@@ -58,13 +58,13 @@ For the mod portal description:
 ### Storage
 
 ```lua
-storage.home_platform = {}      -- [force_index] = platform_index
-storage.respawn_choice = {}     -- [player_index] = platform_index; nil means "use home"
+storage.home_platform = {}      -- [force_index] = platform ID from the platform registry
+storage.respawn_choice = {}     -- [player_index] = platform ID; nil means "use home"
 storage.pending_corpse = {}     -- [player_index] = { surface_index, position }
 storage.armor_given = {}        -- [player_index] = true once the player got mech-armor
 ```
 
-`LuaSpacePlatform.index` is the key used. Check that the attribute exists in `runtime-api.json` before slice 1 closes. It was not looked up for this draft.
+Platforms are stored by the stable platform ID from the platform registry in `docs/spec/planet-lifecycle.md`, not by `LuaSpacePlatform.index`. A Thud landing destroys the platform object, and take-off creates a new one with a new index (headless test, `docs/research/07-planet-loop-tests.md`). Resolve an ID to the current `LuaSpacePlatform` through the registry each time. While a platform is landed, its ID resolves to the landed hub, and spawning or respawning there uses the hub's surface and position.
 
 ### Events and handlers
 
@@ -159,7 +159,7 @@ The respawn choice is not a setting. It holds a platform index, which a settings
 ## Multiplayer and determinism
 
 - All handlers run on every peer with identical inputs. They read only `storage` and game state.
-- Iterate platforms with `force.platforms` in a stable order. Sort by `platform.index` before picking a fallback. Never use `pairs` order on a table keyed by index to decide the result.
+- Iterate platforms with `force.platforms` in a stable order. Sort by platform ID before picking a fallback. Never use `pairs` order on a table keyed by index to decide the result.
 - A player who joins later takes the same path as the first player (statement 3). Their `player_index` is new, so `respawn_choice` has no entry and the home platform applies. They also get one `mech-armor` from `give_armor`. `storage.armor_given` keyed by `player_index` makes sure a player gets one armor only, even if the handler runs again.
 - Several players who die in the same tick are handled one `on_player_died` at a time. Each corpse is matched by `character_corpse_player_index`, so two corpses on one tile do not swap. The hub is filled in event order. Event order is the same on all peers.
 - A player who respawns while another player edits the home platform sees the home platform of the tick when `on_player_respawned` ran.
