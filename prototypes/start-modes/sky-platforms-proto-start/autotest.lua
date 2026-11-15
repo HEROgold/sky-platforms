@@ -119,6 +119,27 @@ local function build_steps(player_index)
             tostring(player.character and player.character.health)))
         end)
       end
+      add(function(player)
+        storage.autotest.walking = false
+        try("equip mech-armor", function()
+          local inv = player.character.get_inventory(defines.inventory.character_armor)
+          return inv and inv.insert({ name = "mech-armor", count = 1 })
+        end)
+        try("start walking west in mech armor", function()
+          storage.autotest.walking = true
+          return true
+        end)
+      end)
+      for i = 1, 12 do
+        add(function(player)
+          local ok, tile = pcall(function()
+            local t = player.surface.get_tile(math.floor(player.position.x), math.floor(player.position.y))
+            return t.valid and t.name or "<ungenerated>"
+          end)
+          out(string.format("  mech %d: pos=%.1f,%.1f tile=%s flying=%s", i,
+            player.position.x, player.position.y, ok and tile or "?", tostring(player.is_flying)))
+        end)
+      end
       add(function(player, platform)
         storage.autotest.walking = false
         try("teleport 80 tiles off platform", function()
