@@ -23,6 +23,10 @@ Approved 2026-11-15, after the planet-timer and start-mode prototypes and a gril
 - The vanilla planets are hidden. Fleeting planets come in types based on them: Nauvis-like, Vulcanus-like, Fulgora-like, Gleba-like and Aquilo-like.
 - Planets live in a fixed pool of slots defined at data stage, because mods can't add planets at runtime. Each visit regenerates a slot with a new seed and resource profile (#3).
 - Every slot connects to the Drift and to the other slots, so platforms can hop between planets.
+- Types unlock by planets visited: only Nauvis-like at first, then Vulcanus-, Fulgora- and Gleba-like after 4 visits, then Aquilo-like after 12 (#9).
+- The player sees the next two planets, with type and resources, before they arrive (#9).
+- A pity rule, default 6 and set by a map setting, guarantees a type or uranium that hasn't appeared in the last N planets (#9).
+- Uranium appears on half of the Nauvis-like planets. Every other type always carries its special (#9).
 - A new planet waits in its slot until someone lands or the player skips it. Skipping costs items at a scanner building, which circuits can trigger (#7).
 
 ## 4. Landing and the timer
