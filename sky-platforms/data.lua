@@ -83,3 +83,50 @@ data:extend({
   crushing("sky-oxide-crushing-stone", "oxide-asteroid-chunk", "stone",
     "__base__/graphics/icons/stone.png", "b-a-e[sky-oxide-crushing-stone]"),
 })
+
+-- Salvage thruster: the vanilla thruster at half its max performance, built from red-science items.
+-- max_performance.fluid_usage is halved (2 to 1 per tick). It sets the fluid burned at full
+-- throttle and so the thrust. fluid_volume (0.8) and effectivity (0.51) stay as vanilla, and
+-- min_performance stays as vanilla, so the efficiency curve keeps its shape.
+local salvage_entity = table.deepcopy(data.raw["thruster"]["thruster"])
+salvage_entity.name = "sky-salvage-thruster"
+local minable = assert(salvage_entity.minable)
+minable.result = "sky-salvage-thruster"
+local performance = assert(salvage_entity.max_performance)
+performance.fluid_usage = performance.fluid_usage * 0.5
+
+local salvage_item = table.deepcopy(data.raw["item"]["thruster"])
+salvage_item.name = "sky-salvage-thruster"
+salvage_item.place_result = "sky-salvage-thruster"
+salvage_item.order = "f[thruster]-a[sky-salvage-thruster]"
+
+data:extend({
+  salvage_entity,
+  salvage_item,
+  {
+    type = "recipe",
+    name = "sky-salvage-thruster",
+    enabled = false,
+    ingredients = {
+      { type = "item", name = "steel-plate", amount = 10 },
+      { type = "item", name = "electronic-circuit", amount = 10 },
+      { type = "item", name = "iron-gear-wheel", amount = 10 },
+      { type = "item", name = "pipe", amount = 5 },
+    },
+    energy_required = 10,
+    results = { { type = "item", name = "sky-salvage-thruster", amount = 1 } },
+  },
+})
+
+-- Thruster research on red science only, so the fuel chain opens early. The vanilla unlocks
+-- (thruster, ice-melting, thruster-fuel, thruster-oxidizer) stay.
+local thruster_tech = data.raw["technology"]["space-platform-thruster"]
+thruster_tech.prerequisites = { "steel-processing", "electronics" }
+thruster_tech.unit = {
+  count = 200,
+  ingredients = { { "automation-science-pack", 1 } },
+  time = 30,
+}
+local effects = assert(thruster_tech.effects) --[[@as data.Modifier[] ]]
+table.insert(effects, { type = "unlock-recipe", recipe = "sky-salvage-thruster" })
+table.insert(effects, { type = "unlock-recipe", recipe = "chemical-plant" })
