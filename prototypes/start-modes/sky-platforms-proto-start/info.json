@@ -1,0 +1,9 @@
+{
+  "name": "sky-platforms-proto-start",
+  "version": "0.0.1",
+  "title": "PROTOTYPE Sky Platforms start modes",
+  "author": "HEROgold",
+  "description": "Throwaway prototype. Compares three ways of starting on a space platform: remote controller, god controller, or a walking character.",
+  "factorio_version": "2.1",
+  "dependencies": ["base", "space-age"]
+}

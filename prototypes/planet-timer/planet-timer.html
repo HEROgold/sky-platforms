@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fleeting planet timer prototype</title>
+<style>
+  :root { --accent:#0f6b6b; --ink:#1d2327; --muted:#5f6b72; --line:#d6dbde; --bg:#f6f7f7; --card:#fff; --bad:#9b2c2c; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 system-ui,Segoe UI,Arial,sans-serif; color:var(--ink); background:var(--bg); }
+  main { max-width:1100px; margin:0 auto; padding:24px 20px 60px; }
+  h1 { font-size:24px; margin:0 0 6px; }
+  h2 { font-size:17px; margin:28px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--accent); }
+  .question { background:#fff; border-left:5px solid var(--accent); padding:12px 16px; font-size:17px; margin:10px 0 0; }
+  .muted { color:var(--muted); font-size:13px; }
+  .panel { background:var(--card); border:1px solid var(--line); padding:14px; }
+  .rules { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px 20px; }
+  .rules label { display:block; font-weight:600; font-size:13px; margin-bottom:3px; }
+  .rules select, .rules input { width:100%; padding:6px; font:inherit; border:1px solid var(--line); background:#fff; }
+  .rules .row { display:flex; gap:8px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px; }
+  .card { background:var(--card); border:1px solid var(--line); padding:12px; }
+  .card.changed { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); }
+  .card.dim { opacity:.55; }
+  .card.bad { border-color:var(--bad); }
+  .card h3 { margin:0 0 2px; font-size:16px; }
+  .big { font-size:34px; font-weight:700; font-variant-numeric:tabular-nums; margin:4px 0; }
+  .big.urgent { color:var(--bad); }
+  .tag { display:inline-block; font-size:12px; padding:1px 7px; border:1px solid var(--line); color:var(--muted); }
+  .tag.live { border-color:var(--accent); color:var(--accent); }
+  .tag.bad { border-color:var(--bad); color:var(--bad); }
+  .bar { height:8px; background:#e6eaec; margin:4px 0 6px; }
+  .bar span { display:block; height:100%; background:var(--accent); }
+  .kv { font-size:13px; margin:2px 0; }
+  .changes { background:#eef6f6; border:1px solid var(--accent); padding:10px 14px; min-height:44px; }
+  .changes ul, .log ul { margin:6px 0 0; padding-left:18px; }
+  .log { max-height:280px; overflow:auto; background:#fff; border:1px solid var(--line); padding:8px 14px; }
+  .log li { margin:2px 0; }
+  .log li.new { background:#eef6f6; }
+  .log li.warn { color:var(--bad); }
+  .log .t { color:var(--muted); font-variant-numeric:tabular-nums; margin-right:6px; }
+  button { font:inherit; padding:6px 11px; border:1px solid var(--accent); background:#fff; color:var(--accent); cursor:pointer; margin:2px 4px 2px 0; }
+  button:hover:not(:disabled) { background:var(--accent); color:#fff; }
+  button:disabled { border-color:var(--line); color:#aab1b5; cursor:not-allowed; }
+  button.next { background:var(--accent); color:#fff; }
+  button.done { border-color:var(--line); color:var(--muted); }
+  .tabs button { border-radius:0; }
+  .tabs button.active { background:var(--accent); color:#fff; }
+  .free .rowline { margin:6px 0; }
+  .free .who { display:inline-block; min-width:90px; font-weight:600; }
+  .steps ol { padding-left:0; list-style:none; margin:8px 0 0; }
+  .steps li { margin:4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Fleeting planet timer, logic prototype</h1>
+  <div class="question">How should a fleeting planet's timer behave so it feels like tension, not punishment, and what happens to a platform still on the ground when time runs out?</div>
+  <p class="muted">Throwaway prototype. Change the rules, then play the situations below. Thud facts built in: landing takes 20 s, take-off takes 25 s (5 s countdown, 20 s climb), take-off needs a full damper charge of 2 MJ per floor tile, and a platform on a planet that disappears is lost. Travelling to a planet takes 60 s. Platforms start with 5 MW of power for charging.</p>
+
+  <h2>Rules (changing any rule restarts the situation)</h2>
+  <div class="panel rules" id="rules"></div>
+
+  <h2>Current state</h2>
+  <div class="changes" id="changes"></div>
+  <h3 style="margin:16px 0 8px;font-size:15px">Planets</h3>
+  <div class="cards" id="planets"></div>
+  <h3 style="margin:16px 0 8px;font-size:15px">Platforms</h3>
+  <div class="cards" id="platforms"></div>
+
+  <h2>Event log</h2>
+  <div class="log" id="log"></div>
+
+  <h2>Free play</h2>
+  <div class="panel free" id="free"></div>
+
+  <h2>Guided walkthroughs</h2>
+  <div class="panel steps">
+    <div class="tabs" id="tabs"></div>
+    <p id="wtIntro" style="margin:12px 0 0"></p>
+    <ol id="wtSteps"></ol>
+  </div>
+</main>
+
+<script id="logic">
+/* Pure logic. No DOM. State in, state out. Times are in seconds. */
+const PT = (function () {
+  const LANDING = 20, TAKEOFF = 25, TRAVEL = 60, AUTO_LEAD = 30, POWER_STEP = 10;
+  const NAMES = ['Kestrel', 'Mirage', 'Cinder', 'Tern'];
+  const RES = ['iron and carbon', 'tungsten', 'calcite', 'holmium'];
+  const SLOTS = 3;
+  const DEFAULT_RULES = {
+    timerStart: 'appear', lifetimeMin: 10, warnings: '50%,120,60,25',
+    ground: 'lost', graceSec: 60, overlap: 'after', multi: 'allowed'
+  };
+
+  function fmt(s) {
+    s = Math.max(0, Math.round(s));
+    if (s >= 60 && s % 60 === 0) { const m = s / 60; return m + (m === 1 ? ' minute' : ' minutes'); }
+    if (s >= 60) return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    return s + (s === 1 ? ' second' : ' seconds');
+  }
+
+  function stages(rules) {
+    const life = rules.lifetimeMin * 60, out = [];
+    String(rules.warnings).split(',').forEach(function (tok) {
+      tok = tok.trim(); if (!tok) return;
+      let s, pct = false;
+      if (tok.slice(-1) === '%') { s = Math.round(life * parseFloat(tok) / 100); pct = true; }
+      else s = Math.round(parseFloat(tok));
+      if (isFinite(s) && s > 0 && s < life) out.push({ at: s, pct: pct });
+    });
+    out.sort(function (a, b) { return b.at - a.at; });
+    return out;
+  }
+
+  function log(s, text, kind) { s.log.push({ t: s.clock, text: text, kind: kind || 'info' }); }
+  function cap(p) { return 2 * p.tiles; }
+  function onGround(s, pl) {
+    return s.platforms.filter(function (p) {
+      return !p.lost && p.loc.planet === pl.id && (p.loc.type === 'descending' || p.loc.type === 'landed' || p.loc.type === 'lifting');
+    });
+  }
+
+  function startTimer(s, pl, why) {
+    pl.running = true;
+    log(s, 'Planet ' + pl.name + ': timer started (' + why + '), ' + fmt(pl.timeLeft) + ' on the clock.');
+  }
+  function appear(s, pl) {
+    pl.status = 'live';
+    log(s, 'Planet ' + pl.name + ' appeared in slot ' + pl.slot + ' (' + pl.resources + ').');
+    if (s.rules.timerStart === 'appear') startTimer(s, pl, 'planet appeared');
+    else log(s, 'Planet ' + pl.name + ': timer is waiting for ' + (s.rules.timerStart === 'orbit' ? 'the first platform in orbit.' : 'the first landing.'));
+  }
+
+  function init(rules) {
+    rules = Object.assign({}, DEFAULT_RULES, rules || {});
+    const life = rules.lifetimeMin * 60;
+    const s = {
+      rules: rules, clock: 0, log: [], logFrom: 0, lastAction: 'Start',
+      planets: NAMES.map(function (n, i) {
+        return { id: i, name: n, slot: (i % SLOTS) + 1, status: 'upcoming', lifetime: life, timeLeft: life,
+                 running: false, fired: [], graceLeft: 0, resources: RES[i] };
+      }),
+      platforms: [
+        { name: 'Lander', tiles: 100, loc: { type: 'orbit', planet: null }, charge: 0, power: 5, cargo: 0, banked: 0, lost: false, lostCargo: 0 },
+        { name: 'Main base', tiles: 2000, loc: { type: 'orbit', planet: null }, charge: 0, power: 5, cargo: 0, banked: 0, lost: false, lostCargo: 0 }
+      ]
+    };
+    appear(s, s.planets[0]);
+    s.logFrom = 0;
+    return s;
+  }
+
+  function collapse(s, pl, note) {
+    pl.status = 'gone'; pl.timeLeft = 0; pl.graceLeft = 0;
+    log(s, 'Planet ' + pl.name + ' collapsed' + (note ? ' ' + note : '') + '. Its surface is deleted.', 'warn');
+    s.platforms.forEach(function (p) {
+      if (p.lost || p.loc.planet !== pl.id) return;
+      const t = p.loc.type;
+      if (t === 'travelling') {
+        p.loc = { type: 'orbit', planet: null };
+        log(s, p.name + ' was flying to ' + pl.name + ' and turns back to home orbit. Nothing lost.');
+      } else if (t === 'orbit') {
+        p.loc = { type: 'orbit', planet: null };
+        log(s, p.name + ' was in orbit of ' + pl.name + ' and returns to home orbit. Nothing lost.');
+      } else if (s.rules.ground === 'pullback') {
+        p.lostCargo += p.cargo;
+        log(s, p.name + ' was pulled back to orbit. The ' + Math.round(p.cargo) + ' items mined this visit are lost.', 'warn');
+        p.cargo = 0; p.charge = 0; p.loc = { type: 'orbit', planet: null };
+      } else {
+        p.lost = true; p.lostCargo += p.cargo; p.cargo = 0;
+        log(s, p.name + ' was ' + (t === 'landed' ? 'on the ground' : t === 'lifting' ? 'still climbing' : 'still descending') + ' and is LOST with the planet.', 'warn');
+      }
+    });
+  }
+
+  function tick(s) {
+    s.clock++;
+    s.platforms.forEach(function (p) {
+      if (p.lost) return;
+      const L = p.loc;
+      if (L.type === 'travelling') {
+        L.eta--;
+        if (L.eta <= 0) {
+          const pl = s.planets[L.planet];
+          p.loc = { type: 'orbit', planet: L.planet };
+          log(s, p.name + ' arrived in orbit of ' + pl.name + '.');
+          if (pl.status === 'live' && !pl.running && s.rules.timerStart === 'orbit') startTimer(s, pl, 'first platform in orbit');
+        }
+      } else if (L.type === 'descending') {
+        L.eta--;
+        if (L.eta <= 0) {
+          const pl = s.planets[L.planet];
+          p.loc = { type: 'landed', planet: L.planet };
+          p.charge = 0;
+          log(s, p.name + ' landed on ' + pl.name + '. Mining starts.');
+          if (!pl.running && s.rules.timerStart === 'land') startTimer(s, pl, 'first landing');
+        }
+      } else if (L.type === 'lifting') {
+        L.eta--;
+        if (L.eta <= 0) {
+          const pl = s.planets[L.planet];
+          p.loc = { type: 'orbit', planet: L.planet };
+          p.banked += p.cargo;
+          log(s, p.name + ' reached orbit of ' + pl.name + ' with ' + Math.round(p.cargo) + ' items safe.');
+          p.cargo = 0;
+        }
+      } else if (L.type === 'landed') {
+        p.cargo += p.tiles / 20;
+        p.charge = Math.min(cap(p), p.charge + p.power);
+      }
+    });
+
+    const stg = stages(s.rules);
+    s.planets.forEach(function (pl) {
+      if (pl.status === 'live' && pl.running) {
+        pl.timeLeft--;
+        stg.forEach(function (st, i) {
+          if (pl.timeLeft <= st.at && pl.fired.indexOf(i) < 0 && pl.timeLeft > 0) {
+            pl.fired.push(i);
+            const last = i === stg.length - 1;
+            const txt = st.pct ? 'Planet ' + pl.name + ': ' + fmt(st.at) + ' left, half the time is gone.'
+              : last ? 'Planet ' + pl.name + ': ' + fmt(st.at) + ' left, last chance to lift off.'
+              : 'Planet ' + pl.name + ': ' + fmt(st.at) + ' left, lift off now.';
+            log(s, txt, 'warn');
+          }
+        });
+        if (s.rules.ground === 'auto' && pl.timeLeft <= AUTO_LEAD && pl.timeLeft >= TAKEOFF) {
+          s.platforms.forEach(function (p) {
+            if (!p.lost && p.loc.type === 'landed' && p.loc.planet === pl.id && p.charge >= cap(p)) {
+              p.loc = { type: 'lifting', planet: pl.id, eta: TAKEOFF }; p.charge = 0;
+              log(s, 'Our mod started take-off for ' + p.name + ' automatically (charge was full, ' + fmt(pl.timeLeft) + ' left).');
+            }
+          });
+        }
+        if (pl.timeLeft <= 0) {
+          if (s.rules.ground === 'grace' && onGround(s, pl).length) {
+            pl.status = 'collapsing'; pl.graceLeft = s.rules.graceSec;
+            log(s, 'Planet ' + pl.name + ': time is up but the planet holds for up to ' + fmt(pl.graceLeft) + ' while platforms are on the ground.', 'warn');
+          } else collapse(s, pl);
+        }
+      } else if (pl.status === 'collapsing') {
+        pl.graceLeft--;
+        if (!onGround(s, pl).length) collapse(s, pl, '(everyone left the ground in time)');
+        else if (pl.graceLeft <= 0) collapse(s, pl, '(grace period ran out)');
+      }
+    });
+
+    const j = s.planets.findIndex(function (p) { return p.status === 'upcoming'; });
+    if (j > 0) {
+      const prev = s.planets[j - 1];
+      const go = s.rules.overlap === 'half'
+        ? (prev.status === 'gone' || (prev.running && prev.status === 'live' && prev.timeLeft <= prev.lifetime / 2))
+        : prev.status === 'gone';
+      if (go) appear(s, s.planets[j]);
+    }
+  }
+
+  function describe(a, s) {
+    const P = function (i) { return s.platforms[i] ? s.platforms[i].name : '?'; };
+    switch (a.type) {
+      case 'advance': return 'Time passes: ' + fmt(a.secs);
+      case 'advanceUntil': return 'Time passes until ' + s.planets[a.planet].name + ' has ' + fmt(a.left) + ' left';
+      case 'advanceUntilGone': return 'Time passes until ' + s.planets[a.planet].name + ' has collapsed';
+      case 'send': return P(a.platform) + ' is sent to ' + s.planets[a.planet].name;
+      case 'land': return P(a.platform) + ' starts landing';
+      case 'takeoff': return P(a.platform) + ' starts take-off';
+      case 'power': return 'More power for ' + P(a.platform) + ' (+' + POWER_STEP + ' MW)';
+    }
+    return a.type;
+  }
+
+  function same(a, b) {
+    return a.type === b.type && a.platform === b.platform && a.planet === b.planet && a.secs === b.secs;
+  }
+
+  function legalActions(s) {
+    const out = [5, 30, 60, 300].map(function (n) { return { type: 'advance', secs: n }; });
+    s.platforms.forEach(function (p, i) {
+      if (p.lost) return;
+      const L = p.loc;
+      if (L.type === 'orbit') {
+        s.planets.forEach(function (pl) {
+          if (pl.status === 'live' && L.planet !== pl.id) out.push({ type: 'send', platform: i, planet: pl.id });
+        });
+        if (L.planet !== null && s.planets[L.planet].status === 'live') {
+          const busy = s.rules.multi === 'one' && s.platforms.some(function (q, k) {
+            return k !== i && !q.lost && q.loc.planet === L.planet && (q.loc.type === 'descending' || q.loc.type === 'landed' || q.loc.type === 'lifting');
+          });
+          if (!busy) out.push({ type: 'land', platform: i });
+        }
+      } else if (L.type === 'landed') {
+        if (p.charge >= cap(p)) out.push({ type: 'takeoff', platform: i });
+        out.push({ type: 'power', platform: i });
+      }
+    });
+    return out;
+  }
+
+  function reason(s, a) {
+    const p = s.platforms[a.platform];
+    if (!p) return 'no such platform';
+    if (p.lost) return p.name + ' is lost';
+    if (a.type === 'takeoff') {
+      if (p.loc.type !== 'landed') return p.name + ' is not on the ground';
+      return 'not enough charge, ' + Math.round(100 * p.charge / cap(p)) + '% of 100% (' + Math.round(p.charge) + ' of ' + cap(p) + ' MJ)';
+    }
+    if (a.type === 'land') return s.rules.multi === 'one' ? p.name + ' cannot land now (not in orbit of a live planet, or another platform is already down)' : p.name + ' is not in orbit of a live planet';
+    if (a.type === 'send') return p.name + ' cannot fly there right now';
+    if (a.type === 'power') return p.name + ' is not on the ground';
+    return 'not possible';
+  }
+
+  function reduce(state, a) {
+    if (a.type === 'reset') return init(a.rules || state.rules);
+    const s = structuredClone(state);
+    s.logFrom = s.log.length;
+    s.lastAction = describe(a, s);
+    const needs = ['send', 'land', 'takeoff', 'power'];
+    if (needs.indexOf(a.type) >= 0 && !legalActions(s).some(function (l) { return same(l, a); })) {
+      log(s, 'Not possible: ' + reason(s, a) + '.', 'warn');
+      s.lastAction += ' (refused)';
+      return s;
+    }
+    const p = s.platforms[a.platform];
+    switch (a.type) {
+      case 'advance': for (let i = 0; i < a.secs; i++) tick(s); break;
+      case 'advanceUntil': { let g = 0; while (s.planets[a.planet].status !== 'gone' && s.planets[a.planet].timeLeft > a.left && g++ < 5000) tick(s); break; }
+      case 'advanceUntilGone': { let g = 0; while (s.planets[a.planet].status !== 'gone' && g++ < 5000) tick(s); break; }
+      case 'send':
+        p.loc = { type: 'travelling', planet: a.planet, eta: TRAVEL };
+        log(s, p.name + ' leaves for ' + s.planets[a.planet].name + ', travel time ' + fmt(TRAVEL) + '.');
+        break;
+      case 'land':
+        p.loc = { type: 'descending', planet: p.loc.planet, eta: LANDING };
+        log(s, p.name + ' starts landing on ' + s.planets[p.loc.planet].name + ', ' + fmt(LANDING) + ' to touch down.');
+        break;
+      case 'takeoff':
+        p.loc = { type: 'lifting', planet: p.loc.planet, eta: TAKEOFF }; p.charge = 0;
+        log(s, p.name + ' starts take-off (5 second countdown, then a 20 second climb).');
+        break;
+      case 'power':
+        p.power += POWER_STEP;
+        log(s, p.name + ' now has ' + p.power + ' MW for charging.');
+        break;
+    }
+    return s;
+  }
+
+  return { init: init, reduce: reduce, legalActions: legalActions, fmt: fmt, cap: cap, stages: stages, DEFAULT_RULES: DEFAULT_RULES, NAMES: NAMES };
+})();
+</script>
+
+<script>
+/* UI only. Reads state, draws it, dispatches actions. */
+(function () {
+  let rules = Object.assign({}, PT.DEFAULT_RULES);
+  let state = PT.init(rules), prev = null;
+  let wt = null, wtDone = 0;
+
+  const $ = function (id) { return document.getElementById(id); };
+  const fmt = PT.fmt;
+  const key = function (a) { return JSON.stringify(a); };
+
+  function dispatch(a) { prev = state; state = PT.reduce(state, a); render(); }
+
+  /* ---------- rules panel ---------- */
+  const RULE_DEFS = [
+    { k: 'timerStart', label: '1. Timer starts', type: 'select', opts: [['appear', 'When the planet appears'], ['orbit', 'When the first platform arrives in orbit'], ['land', 'When the first platform lands']] },
+    { k: 'lifetimeMin', label: '2a. Planet lifetime (minutes)', type: 'number' },
+    { k: 'warnings', label: '2b. Warning stages (time left, comma separated; % means share of lifetime; the smallest is "last chance")', type: 'text' },
+    { k: 'ground', label: '3. Platform on the ground at zero', type: 'select', opts: [['lost', '(a) Lost with the planet'], ['grace', '(b) Planet holds a grace period, then lost'], ['auto', '(c) Our mod auto-starts take-off when charge allows, else lost'], ['pullback', '(d) Pulled back to orbit, haul since landing lost']] },
+    { k: 'graceSec', label: '3b. Grace period (seconds, rule b only)', type: 'number' },
+    { k: 'overlap', label: '4. Next planet appears', type: 'select', opts: [['after', 'Only after the current one collapses'], ['half', 'At 50% of the current lifetime']] },
+    { k: 'multi', label: '5. Platforms per planet', type: 'select', opts: [['allowed', 'Several allowed'], ['one', 'One at a time']] }
+  ];
+  function buildRules() {
+    const host = $('rules');
+    RULE_DEFS.forEach(function (d) {
+      const w = document.createElement('div');
+      const l = document.createElement('label'); l.textContent = d.label; w.appendChild(l);
+      let el;
+      if (d.type === 'select') {
+        el = document.createElement('select');
+        d.opts.forEach(function (o) { const op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; el.appendChild(op); });
+      } else { el = document.createElement('input'); el.type = d.type; if (d.type === 'number') el.min = 1; }
+      el.value = rules[d.k];
+      el.addEventListener('change', function () {
+        rules[d.k] = d.type === 'number' ? Math.max(1, Number(el.value) || 1) : el.value;
+        wt = wt; wtDone = 0;
+        dispatch({ type: 'reset', rules: Object.assign({}, rules) });
+        renderWalk();
+      });
+      w.appendChild(el); host.appendChild(w);
+    });
+  }
+
+  /* ---------- describing things ---------- */
+  function where(p) {
+    if (p.lost) return 'Lost';
+    const L = p.loc, n = L.planet !== null ? state.planets[L.planet].name : '';
+    switch (L.type) {
+      case 'orbit': return L.planet === null ? 'In home orbit' : 'In orbit of ' + n;
+      case 'travelling': return 'Travelling to ' + n + ', arrives in ' + fmt(L.eta);
+      case 'descending': return 'Descending to ' + n + ', lands in ' + fmt(L.eta);
+      case 'landed': return 'Landed on ' + n;
+      case 'lifting': return L.eta > 20 ? 'Take-off countdown on ' + n + ', climb starts in ' + fmt(L.eta - 20) : 'Climbing away from ' + n + ', in orbit in ' + fmt(L.eta);
+    }
+  }
+  function clock(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+  function sigPlanet(pl) { return pl.status + '|' + pl.running + '|' + pl.fired.length; }
+  function sigPlat(p) { return JSON.stringify(p.loc.type) + p.loc.planet + p.lost + p.banked + (p.charge >= PT.cap(p)) + p.power + p.lostCargo; }
+
+  /* ---------- drawing ---------- */
+  function renderPlanets() {
+    const stg = PT.stages(state.rules);
+    $('planets').innerHTML = state.planets.map(function (pl, i) {
+      const changed = prev && sigPlanet(prev.planets[i]) !== sigPlanet(pl);
+      let stat, big = '', bigCls = 'big', sub = '', cls = 'card';
+      if (pl.status === 'upcoming') { stat = '<span class="tag">Not yet appeared</span>'; cls += ' dim'; big = '--:--'; sub = 'Appears per the overlap rule.'; }
+      else if (pl.status === 'gone') { stat = '<span class="tag bad">Collapsed</span>'; cls += ' dim'; big = '0:00'; sub = 'Surface deleted.'; }
+      else if (pl.status === 'collapsing') {
+        stat = '<span class="tag bad">Holding (grace)</span>'; big = clock(pl.graceLeft); bigCls += ' urgent'; cls += ' bad';
+        sub = 'Time is up. The planet holds until the ground is empty or the grace ends.';
+      } else {
+        stat = '<span class="tag live">Live</span>';
+        big = clock(pl.timeLeft);
+        if (!pl.running) sub = 'Timer not started yet. Full ' + fmt(pl.lifetime) + ' on the clock.';
+        else {
+          const lastIdx = stg.length - 1; let idx = -1;
+          pl.fired.forEach(function (f) { if (f > idx) idx = f; });
+          sub = idx < 0 ? 'No warning yet.' : 'Warning stage ' + (idx + 1) + ' of ' + stg.length + ': ' + fmt(stg[idx].at) + (idx === lastIdx ? ', last chance to lift off' : stg[idx].pct ? ', half the time gone' : ', lift off now');
+          if (pl.timeLeft <= 60) bigCls += ' urgent';
+        }
+      }
+      const frac = pl.status === 'live' ? Math.max(0, pl.timeLeft / pl.lifetime) : pl.status === 'collapsing' ? 0 : (pl.status === 'upcoming' ? 1 : 0);
+      const here = state.platforms.filter(function (p) { return !p.lost && p.loc.planet === pl.id; }).map(function (p) { return p.name; });
+      return '<div class="' + cls + (changed ? ' changed' : '') + '"><h3>' + pl.name + '</h3>' +
+        '<div class="muted">Slot ' + pl.slot + ', ' + pl.resources + '</div>' + stat +
+        '<div class="' + bigCls + '">' + big + '</div>' +
+        '<div class="bar"><span style="width:' + Math.round(frac * 100) + '%"></span></div>' +
+        '<div class="kv">' + sub + '</div>' +
+        (here.length ? '<div class="kv">Here now: ' + here.join(', ') + '</div>' : '') + '</div>';
+    }).join('');
+  }
+
+  function renderPlatforms() {
+    $('platforms').innerHTML = state.platforms.map(function (p, i) {
+      const changed = prev && sigPlat(prev.platforms[i]) !== sigPlat(p);
+      const c = PT.cap(p), pct = Math.round(100 * p.charge / c);
+      return '<div class="card' + (p.lost ? ' bad' : '') + (changed ? ' changed' : '') + '"><h3>' + p.name + '</h3>' +
+        '<div class="muted">' + p.tiles + ' floor tiles, take-off needs ' + c + ' MJ</div>' +
+        '<div style="margin:6px 0">' + (p.lost ? '<span class="tag bad">LOST</span>' : '<span class="tag live">' + where(p) + '</span>') + '</div>' +
+        '<div class="kv">Charge: ' + pct + '% (' + Math.round(p.charge) + ' of ' + c + ' MJ), power ' + p.power + ' MW</div>' +
+        '<div class="bar"><span style="width:' + pct + '%"></span></div>' +
+        '<div class="kv">Mined this visit: ' + Math.round(p.cargo) + '</div>' +
+        '<div class="kv">Safe in orbit: ' + Math.round(p.banked) + '</div>' +
+        (p.lostCargo ? '<div class="kv" style="color:var(--bad)">Haul lost so far: ' + Math.round(p.lostCargo) + '</div>' : '') + '</div>';
+    }).join('');
+  }
+
+  function renderLog() {
+    const items = state.log.map(function (e, i) { return { e: e, i: i }; }).reverse();
+    $('log').innerHTML = '<ul style="list-style:none;padding:0;margin:0">' + items.map(function (x) {
+      return '<li class="' + (x.e.kind === 'warn' ? 'warn ' : '') + (x.i >= state.logFrom && state.log.length > 0 && state.lastAction !== 'Start' ? 'new' : '') + '"><span class="t">' + clock(x.e.t) + '</span>' + x.e.text + '</li>';
+    }).join('') + '</ul>';
+    const fresh = state.log.slice(state.logFrom);
+    $('changes').innerHTML = '<b>What just changed</b> at ' + clock(state.clock) + ' on the clock. Action: ' + state.lastAction +
+      (fresh.length && state.lastAction !== 'Start' ? '<ul>' + fresh.map(function (e) { return '<li>' + e.text + '</li>'; }).join('') + '</ul>' : '<div class="muted">Nothing else happened.</div>');
+  }
+
+  function renderFree() {
+    const legal = {}; PT.legalActions(state).forEach(function (a) { legal[key(a)] = true; });
+    const btn = function (a, label) {
+      return '<button data-a=\'' + key(a) + '\'' + (legal[key(a)] ? '' : ' disabled') + '>' + label + '</button>';
+    };
+    let h = '<div class="rowline"><span class="who">Time</span>' +
+      btn({ type: 'advance', secs: 5 }, '+5 s') + btn({ type: 'advance', secs: 30 }, '+30 s') +
+      btn({ type: 'advance', secs: 60 }, '+1 min') + btn({ type: 'advance', secs: 300 }, '+5 min') + '</div>';
+    state.platforms.forEach(function (p, i) {
+      h += '<div class="rowline"><span class="who">' + p.name + '</span>';
+      state.planets.forEach(function (pl) { if (pl.status === 'live' || pl.status === 'collapsing') h += btn({ type: 'send', platform: i, planet: pl.id }, 'Send to ' + pl.name); });
+      h += btn({ type: 'land', platform: i }, 'Land') + btn({ type: 'takeoff', platform: i }, 'Start take-off') + btn({ type: 'power', platform: i }, 'Add power (+10 MW)') + '</div>';
+    });
+    h += '<div class="rowline"><span class="who"></span><button data-a=\'{"type":"reset"}\'>Reset</button></div>';
+    $('free').innerHTML = h;
+    Array.prototype.forEach.call($('free').querySelectorAll('button'), function (b) {
+      b.addEventListener('click', function () { wtDone = 0; dispatch(JSON.parse(b.getAttribute('data-a'))); });
+    });
+  }
+
+  /* ---------- walkthroughs ---------- */
+  const A = function (type, o) { return Object.assign({ type: type }, o || {}); };
+  const WALK = [
+    { title: 'Happy path', intro: 'The Lander lands, mines and lifts off at the 2 minute warning.', steps: [
+      ['Send Lander to Kestrel', [A('send', { platform: 0, planet: 0 })]],
+      ['Wait 1 minute (it arrives)', [A('advance', { secs: 60 })]],
+      ['Land the Lander', [A('land', { platform: 0 })]],
+      ['Wait 20 s (touch down)', [A('advance', { secs: 20 })]],
+      ['Mine until the 2 minute warning', [A('advanceUntil', { planet: 0, left: 120 })]],
+      ['Start take-off', [A('takeoff', { platform: 0 })]],
+      ['Wait 25 s (climb)', [A('advance', { secs: 25 })]],
+      ['Wait for the planet to collapse', [A('advanceUntilGone', { planet: 0 })]]
+    ] },
+    { title: 'Late lift-off', intro: 'The Lander starts take-off with 20 s left. Take-off needs 25 s. Does rule 3 save it?', steps: [
+      ['Send Lander to Kestrel', [A('send', { platform: 0, planet: 0 })]],
+      ['Wait 1 minute', [A('advance', { secs: 60 })]],
+      ['Land the Lander', [A('land', { platform: 0 })]],
+      ['Wait 20 s', [A('advance', { secs: 20 })]],
+      ['Mine until 20 s are left', [A('advanceUntil', { planet: 0, left: 20 })]],
+      ['Start take-off', [A('takeoff', { platform: 0 })]],
+      ['Wait 25 s (climb)', [A('advance', { secs: 25 })]],
+      ['Wait for the planet to collapse', [A('advanceUntilGone', { planet: 0 })]]
+    ] },
+    { title: 'Not enough charge', intro: 'The Main base needs 4000 MJ to lift off. At 5 MW it cannot charge in time.', steps: [
+      ['Send Main base to Kestrel', [A('send', { platform: 1, planet: 0 })]],
+      ['Wait 1 minute', [A('advance', { secs: 60 })]],
+      ['Land the Main base', [A('land', { platform: 1 })]],
+      ['Wait 20 s', [A('advance', { secs: 20 })]],
+      ['Wait until 25 s are left', [A('advanceUntil', { planet: 0, left: 25 })]],
+      ['Try to start take-off', [A('takeoff', { platform: 1 })]],
+      ['Add power (+10 MW)', [A('power', { platform: 1 })]],
+      ['Wait for the planet to collapse', [A('advanceUntilGone', { planet: 0 })]]
+    ] },
+    { title: 'Two platforms', intro: 'One platform is on the ground and one is in orbit when the planet collapses.', steps: [
+      ['Send Lander to Kestrel', [A('send', { platform: 0, planet: 0 })]],
+      ['Send Main base to Kestrel', [A('send', { platform: 1, planet: 0 })]],
+      ['Wait 1 minute (both arrive)', [A('advance', { secs: 60 })]],
+      ['Land the Lander only', [A('land', { platform: 0 })]],
+      ['Wait 20 s', [A('advance', { secs: 20 })]],
+      ['Wait for the planet to collapse', [A('advanceUntilGone', { planet: 0 })]]
+    ] },
+    { title: 'Expires while travelling', intro: 'The Lander is sent with only 30 s left on the planet, and the trip takes 60 s.', steps: [
+      ['Wait until 30 s are left', [A('advanceUntil', { planet: 0, left: 30 })]],
+      ['Send Lander to Kestrel', [A('send', { platform: 0, planet: 0 })]],
+      ['Wait 30 s (the planet collapses)', [A('advance', { secs: 30 })]],
+      ['Wait 30 s more', [A('advance', { secs: 30 })]]
+    ] }
+  ];
+
+  function startWalk(i) {
+    wt = i; wtDone = 0;
+    dispatch({ type: 'reset', rules: Object.assign({}, rules) });
+    renderWalk();
+  }
+  function renderWalk() {
+    $('tabs').innerHTML = WALK.map(function (w, i) { return '<button class="' + (wt === i ? 'active' : '') + '" data-i="' + i + '">' + w.title + '</button>'; }).join('');
+    Array.prototype.forEach.call($('tabs').querySelectorAll('button'), function (b) { b.addEventListener('click', function () { startWalk(Number(b.getAttribute('data-i'))); }); });
+    if (wt === null) { $('wtIntro').textContent = 'Pick a tab. It resets the situation, then press the steps in order.'; $('wtSteps').innerHTML = ''; return; }
+    const w = WALK[wt];
+    $('wtIntro').textContent = w.intro;
+    $('wtSteps').innerHTML = w.steps.map(function (s, i) {
+      return '<li><button data-s="' + i + '" class="' + (i < wtDone ? 'done' : i === wtDone ? 'next' : '') + '">' + (i + 1) + '. ' + s[0] + '</button></li>';
+    }).join('');
+    Array.prototype.forEach.call($('wtSteps').querySelectorAll('button'), function (b) {
+      b.addEventListener('click', function () {
+        const i = Number(b.getAttribute('data-s'));
+        WALK[wt].steps[i][1].forEach(dispatch);
+        wtDone = Math.max(wtDone, i + 1);
+        renderWalk();
+      });
+    });
+  }
+
+  function render() { renderPlanets(); renderPlatforms(); renderLog(); renderFree(); }
+
+  buildRules(); render(); renderWalk();
+})();
+</script>
+</body>
+</html>
