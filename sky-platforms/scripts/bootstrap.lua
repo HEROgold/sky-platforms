@@ -22,7 +22,7 @@ local KIT = {
   { name = "solar-panel", count = 20, scaled = true },
   { name = "inserter", count = 40, scaled = true },
   { name = "transport-belt", count = 100, scaled = true },
-  { name = "space-platform-foundation", count = 50, scaled = true },
+  { name = "space-platform-foundation", count = 180, scaled = true }, -- room for 6 electric furnaces, 4 collectors, 3 crushers, 5 tiles each
   { name = "thud-inertial-damper", count = 1 },
 }
 

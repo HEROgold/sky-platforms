@@ -31,7 +31,7 @@ end
 local KIT = {
   { "asteroid-collector", 4 }, { "crusher", 4 }, { "assembling-machine-1", 4 },
   { "stone-furnace", 4 }, { "lab", 2 }, { "solar-panel", 20, true }, { "inserter", 40, true },
-  { "transport-belt", 100, true }, { "space-platform-foundation", 50, true },
+  { "transport-belt", 100, true }, { "space-platform-foundation", 180, true },
   { "thud-inertial-damper", 1 },
 }
 local TECHS = {
