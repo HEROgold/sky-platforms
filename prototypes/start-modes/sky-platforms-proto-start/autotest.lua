@@ -37,7 +37,10 @@ end
 
 local function checks(player, platform)
   local hub = platform.hub
-  local target = { x = hub.position.x + 4, y = hub.position.y + 6 }
+  -- A free spot within reach of the player, so a failed build means the mode blocks it.
+  local target = platform.surface.find_non_colliding_position("inserter", player.position, 6, 1)
+    or { x = hub.position.x + 4, y = hub.position.y + 6 }
+  out(string.format("  build target %.1f,%.1f", target.x, target.y))
 
   try("main inventory exists", function() return player.get_main_inventory() ~= nil end)
   try("insert 10 iron plates", function() return player.insert({ name = "iron-plate", count = 10 }) end)
@@ -58,6 +61,7 @@ local function checks(player, platform)
     player.cursor_ghost = "inserter"
     return player.cursor_ghost ~= nil
   end)
+  try("can_place_entity inserter", function() return player.can_place_entity({ name = "inserter", position = target }) end)
   try("can_build_from_cursor", function() return player.can_build_from_cursor({ position = target }) end)
   try("build_from_cursor", function()
     player.build_from_cursor({ position = target })
@@ -98,12 +102,12 @@ local function build_steps(player_index)
     end)
     if mode == "walk" then
       add(function(player)
-        try("start walking east", function()
+        try("start walking west", function()
           storage.autotest.walking = true
           return true
         end)
       end)
-      for i = 1, 8 do
+      for i = 1, 20 do
         add(function(player)
           local ok, tile = pcall(function()
             local t = player.surface.get_tile(math.floor(player.position.x), math.floor(player.position.y))
@@ -145,7 +149,7 @@ function M.walk_tick()
   if not (t and t.walking) then return end
   local player = game.get_player(t.player)
   if player and player.valid and player.character then
-    player.walking_state = { walking = true, direction = defines.direction.east }
+    player.walking_state = { walking = true, direction = defines.direction.west }
   end
 end
 
