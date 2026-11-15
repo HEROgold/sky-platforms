@@ -140,6 +140,33 @@ local function build_steps(player_index)
             player.position.x, player.position.y, ok and tile or "?", tostring(player.is_flying)))
         end)
       end
+      -- Edge case: stop over empty space, then lose the armor mid-air.
+      local function sample(label)
+        return function(player)
+          local ok, tile = pcall(function()
+            local t = player.surface.get_tile(math.floor(player.position.x), math.floor(player.position.y))
+            return t.valid and t.name or "<ungenerated>"
+          end)
+          local char = player.character
+          out(string.format("  %s: controller=%s pos=%.1f,%.1f tile=%s flying=%s character=%s health=%s",
+            label, cname(player.controller_type), player.position.x, player.position.y,
+            ok and tile or "?", tostring(player.is_flying), tostring(char ~= nil and char.valid),
+            tostring(char and char.valid and char.health)))
+        end
+      end
+      add(function(player)
+        storage.autotest.walking = false
+        out("  -- stopped over empty space, armor still on")
+      end)
+      add(sample("hover 1"))
+      add(sample("hover 2"))
+      add(function(player)
+        try("remove mech-armor mid-air", function()
+          local inv = player.character.get_inventory(defines.inventory.character_armor)
+          return inv and inv.remove({ name = "mech-armor", count = 1 })
+        end)
+      end)
+      for i = 1, 5 do add(sample("no armor " .. i)) end
       add(function(player, platform)
         storage.autotest.walking = false
         try("teleport 80 tiles off platform", function()
