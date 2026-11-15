@@ -1,5 +1,7 @@
 -- PROTOTYPE: start-mode comparison. Throwaway code, not for release.
 
+local autotest = require("autotest")
+
 local DEFAULT_MODE = "remote"
 local MODES = { remote = true, god = true, walk = true }
 
@@ -163,6 +165,7 @@ local function try_start(player)
     fill_hub(player, ready)
   end
   apply_mode(player, DEFAULT_MODE, ready)
+  if autotest.active() and not storage.autotest then autotest.start(player) end
   return true
 end
 
@@ -198,6 +201,15 @@ script.on_nth_tick(30, function()
       storage.pending[index] = nil
     end
   end
+end)
+
+script.on_event(defines.events.on_tick, function()
+  if storage.autotest then autotest.walk_tick() end
+end)
+
+script.on_nth_tick(10, function()
+  if not storage.autotest then return end
+  autotest.tick(function(player) return ready_platform(player.force) end, apply_mode)
 end)
 
 -- Walk mode edge test: report each tile type the character stands on. Nothing is blocked.
