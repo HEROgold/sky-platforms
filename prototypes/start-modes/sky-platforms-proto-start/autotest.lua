@@ -105,9 +105,12 @@ local function build_steps(player_index)
       end)
       for i = 1, 8 do
         add(function(player)
-          local ok, tile = pcall(function() return player.surface.get_tile(math.floor(player.position.x), math.floor(player.position.y)) end)
+          local ok, tile = pcall(function()
+            local t = player.surface.get_tile(math.floor(player.position.x), math.floor(player.position.y))
+            return t.valid and t.name or "<ungenerated>"
+          end)
           out(string.format("  walk %d: pos=%.1f,%.1f tile=%s character_valid=%s health=%s", i,
-            player.position.x, player.position.y, ok and tile.name or "?",
+            player.position.x, player.position.y, ok and tile or "?",
             tostring(player.character ~= nil and player.character.valid),
             tostring(player.character and player.character.health)))
         end)
@@ -122,7 +125,8 @@ local function build_steps(player_index)
       add(function(player)
         snapshot(player, "off platform")
         try("tile under player", function()
-          return player.surface.get_tile(math.floor(player.position.x), math.floor(player.position.y)).name
+          local t = player.surface.get_tile(math.floor(player.position.x), math.floor(player.position.y))
+          return t.valid and t.name or "<ungenerated>"
         end)
         try("character health", function() return player.character and player.character.health end)
       end)

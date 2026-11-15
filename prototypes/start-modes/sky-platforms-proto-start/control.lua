@@ -221,10 +221,14 @@ script.on_nth_tick(15, function()
   for index, last in pairs(storage.walkers) do
     local player = game.get_player(index)
     if player and player.valid and player.character then
-      local ok, tile = pcall(function() return player.surface.get_tile(math.floor(player.position.x), math.floor(player.position.y)) end)
-      if ok and tile and tile.name ~= last then
-        storage.walkers[index] = tile.name
-        say(player, "walk: standing on tile '" .. tile.name .. "' at "
+      -- Off the generated area get_tile returns an invalid LuaTile; report it instead of reading .name.
+      local ok, name = pcall(function()
+        local tile = player.surface.get_tile(math.floor(player.position.x), math.floor(player.position.y))
+        return tile.valid and tile.name or "<ungenerated>"
+      end)
+      if ok and name ~= last then
+        storage.walkers[index] = name
+        say(player, "walk: standing on tile '" .. name .. "' at "
           .. string.format("%.1f,%.1f", player.position.x, player.position.y))
       end
     end
