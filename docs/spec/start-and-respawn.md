@@ -154,7 +154,7 @@ The respawn choice is not a setting. It holds a platform index, which a settings
 - New saves: `on_init` creates the tables.
 - Existing saves of this mod (before 0.1.0 there are none): None.
 - Saves that load the mod for the first time: `on_configuration_changed` creates the tables, including `storage.armor_given`. `on_player_joined_game` pulls players who stand off-platform onto the home platform. If no home platform exists, `home_platform` stays empty until orbit bootstrap creates one.
-- Migration file: `migrations/0.4.0.lua` or `migrations/0.5.0.lua` only if a later slice changes the table shape. At present, None.
+- Migration file: `migrations/0.10.0.lua` or `migrations/0.11.0.lua` only if a later slice changes the table shape. At present, None.
 
 ## Multiplayer and determinism
 
@@ -227,7 +227,7 @@ Acceptance criteria:
 
 Path to prod:
 
-- Target release: 0.4.0.
+- Target release: 0.10.0.
 - Save migration: no.
 - In-game test steps: 1. Give the character items. 2. Kill the character on the platform and in space. 3. Open the hub and check items. 4. Fill the hub with a test script and repeat.
 - Changelog line: "A dead player's items now move into the home platform hub."
@@ -247,14 +247,14 @@ Acceptance criteria:
 
 Path to prod:
 
-- Target release: 0.5.0.
+- Target release: 0.11.0.
 - Save migration: no (tables exist since 0.1.0).
 - In-game test steps: 1. Create a second platform. 2. Pick it as respawn point. 3. Die and check. 4. Make it home. 5. Join a second client and check. 6. Save, load, check again.
 - Changelog line: "Added a window to pick your respawn platform and the home platform."
 
 ## Path to prod
 
-Release plan across both specs (2026-11-15): 0.1.0 = orbit-bootstrap slice 1 + start-and-respawn slices 1 and 2. 0.2.0 = copper and stone crushing. 0.3.0 = salvage thruster chain. 0.4.0 = corpse into the hub. 0.5.0 = pick respawn point and home platform.
+Release plan (2026-11-15, planets first): 0.1.0 start in the Drift, spawn and respawn. 0.2.0 copper and stone crushing. 0.3.0 salvage thrusters. 0.4.0 L1, L2, L3, T1 (first planet loop). 0.5.0 L4, L6, L11 (warnings, automatic take-off, late landings). 0.6.0 L5, T2 (half-life, foresight). 0.7.0 T3, T4, T5 (gating, Vulcanus-, Fulgora-, Gleba-like). 0.8.0 T6, T7, T8 (Aquilo-like, pity, enemies). 0.9.0 L7, L8, L9, L10 (easy mode, skip scanner, circuit signals, timer hook). 0.10.0 corpse into the hub. 0.11.0 respawn picker.
 
 Every release passes these checks before upload:
 
@@ -262,7 +262,7 @@ Every release passes these checks before upload:
 2. A headless `factorio --create` load of the zipped mod with its dependencies (Space Age, Thud).
 3. The in-game self-test: the test steps of every slice shipped so far.
 
-Target release: 0.1.0, 0.4.0 and 0.5.0 as above.
+Target release: 0.1.0, 0.10.0 and 0.11.0 as above.
 Save migration: no, in all four slices.
 
 In-game test steps: see each slice.
@@ -282,4 +282,4 @@ Decided 2026-11-15. These moved here from the open list:
 
 Still open:
 
-- Check that `CONTROL + H` does not conflict with another binding before 0.5.0. It is not bound in vanilla Factorio 2.1 to the best of the brief's knowledge.
+- Check that `CONTROL + H` does not conflict with another binding before 0.11.0. It is not bound in vanilla Factorio 2.1 to the best of the brief's knowledge.

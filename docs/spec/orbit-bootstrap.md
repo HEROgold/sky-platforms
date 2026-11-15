@@ -382,7 +382,7 @@ Path to prod:
 
 ## Path to prod
 
-Release plan across both specs (2026-11-15): 0.1.0 = orbit-bootstrap slice 1 + start-and-respawn slices 1 and 2. 0.2.0 = copper and stone crushing. 0.3.0 = salvage thruster chain. 0.4.0 = corpse into the hub. 0.5.0 = pick respawn point and home platform.
+Release plan (2026-11-15, planets first): 0.1.0 start in the Drift, spawn and respawn. 0.2.0 copper and stone crushing. 0.3.0 salvage thrusters. 0.4.0 L1, L2, L3, T1 (first planet loop). 0.5.0 L4, L6, L11 (warnings, automatic take-off, late landings). 0.6.0 L5, T2 (half-life, foresight). 0.7.0 T3, T4, T5 (gating, Vulcanus-, Fulgora-, Gleba-like). 0.8.0 T6, T7, T8 (Aquilo-like, pity, enemies). 0.9.0 L7, L8, L9, L10 (easy mode, skip scanner, circuit signals, timer hook). 0.10.0 corpse into the hub. 0.11.0 respawn picker.
 
 Every release passes these checks before upload:
 
