@@ -70,6 +70,13 @@ function spawn.place_on_platform(player, platform)
   if not character then
     return false
   end
+  -- set_controller refuses a character on another surface than the player.
+  -- A new player stands on Nauvis, and a dead one waits there as a ghost, so
+  -- detach to the god controller and move to the platform surface first.
+  if player.surface.index ~= platform.surface.index then
+    player.set_controller({ type = defines.controllers.god })
+    player.teleport(position, platform.surface)
+  end
   player.set_controller({ type = defines.controllers.character, character = character })
   if old and old.valid then
     old.destroy()
