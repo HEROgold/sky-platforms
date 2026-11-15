@@ -22,7 +22,7 @@ Types and content
 
 Slots and surface properties
 
-8. A planet lives in a slot, a planet prototype defined at data stage. There are 2 slots per type, 10 in total (recommendation in Slot pool).
+8. A planet lives in a slot, a planet prototype defined at data stage. There are 2 slots per type, 10 in total (decided 2026-11-15, see Slot pool).
 9. A planet keeps its type's surface properties (gravity, pressure, magnetic field, solar power), so recipes and buildings that read them behave as on the vanilla planet.
 10. The vanilla planets (Vulcanus, Fulgora, Gleba, Aquilo) are hidden. The player cannot travel to them. Nauvis stays as the first surface.
 
@@ -30,7 +30,7 @@ Choosing the next planet
 
 11. Only Nauvis-like can appear until the force has visited 4 planets. A visit is the first completed landing on a planet (the moment the lifecycle sets `counting`). After 4 visits Vulcanus-, Fulgora- and Gleba-like can appear. After 12 visits Aquilo-like can appear. The thresholds are defaults.
 12. Weights are Nauvis-like 30 and each other type 20. Only unlocked types take part. The roll uses the weights of the unlocked types.
-13. Richness weights are poor 30, normal 50, rich 20.
+13. Richness weights are poor 30, normal 50, rich 20. Richness factors are 0.5 for poor, 1.0 for normal and 2.0 for rich (decided 2026-11-15, needs a play test).
 14. Pity rule. Setting `sky-platforms-pity-n`, default 6, 0 turns it off. If an unlocked type has not appeared among the last N rolled planets, that type is next. If several qualify, pick the one absent longest, then the lowest type order (nauvis, vulcanus, fulgora, gleba, aquilo). The same applies to uranium on Nauvis-like (an uranium-free Nauvis-like run of N Nauvis-like planets forces uranium on the next Nauvis-like planet).
 15. Foresight. The next two planets are rolled ahead and stored. The player sees their type, richness and resources before they appear (GUI in Control stage). Skipping a planet that is `open` does not change the queue. The queue shifts as planets appear.
 16. When the lifecycle opens a planet, it takes the first queue entry, assigns a free slot of that type, and rolls a new entry at the end.
@@ -42,7 +42,7 @@ Enemies
 
 ## Slot pool
 
-Recommendation. Use option (b), slots per type, 2 per type, 10 prototypes.
+Decided 2026-11-15. Use option (b), slots per type, 2 per type, 10 prototypes.
 
 Reasons
 
@@ -73,7 +73,7 @@ Per-visit edits
 1. Richness and seed. After `LuaPlanet.create_surface()` and before any chunk request, write `surface.map_gen_settings` with the richness factor on the resource controls (`AutoplaceControl.richness`) and a fresh `seed` from the planet's roll. Whether chunks near the origin exist right after `create_surface` is not found. If they do, delete them with `delete_chunk` and regenerate with `regenerate_entity` (both in runtime-api.json).
 2. Uranium on Nauvis-like. Set the uranium control `size` to 0 when the planet has none. Fallback if the control does not respond per surface. Generate with the control off and place a uranium patch with `create_entity` after `on_chunk_generated` (05-temporary-planets.md, section 3).
 3. Enemies off. Statement 18.
-4. Chunk cost. Create the surface in one tick (3 to 13 ms) and spread chunk requests (radius 4 takes 370 to 480 ms in total) over several ticks with `request_to_generate_chunks`.
+4. Chunk cost. Create the surface in one tick (3 to 13 ms) and spread chunk requests (radius 4 takes 370 to 480 ms in total) over 8 ticks with `request_to_generate_chunks`.
 
 What cannot move to another planet
 
@@ -89,7 +89,7 @@ These stay on the matching slot type because the data is planet-level or a tile 
 ## Data stage
 
 - 10 `planet` prototypes `sky-<type>-<n>` with `n` in 1 and 2, `type` in `nauvis`, `vulcanus`, `fulgora`, `gleba`, `aquilo`. Each copies the matching vanilla planet (map gen, surface properties, lightning, heating, sounds, effects) with these changes. `hidden = true`, `distance` and `orientation` TBD, no vanilla `solar-system-edge` links. They must be defined in `data.lua` so Thud's data-final-fixes builds their descent entries.
-- 10 `space-connection` prototypes from `sky-drift` to each slot, `length` TBD (proposed 5000).
+- 10 `space-connection` prototypes from `sky-drift` to each slot, `length` 20000 for all slot connections (decided 2026-11-15). The reason is the travel-distance decision in docs/spec/planet-lifecycle.md (statement 7).
 - Hide the vanilla planets (`hidden = true` in data-final-fixes) so nothing in the starmap shows them (rule for hiding via Thud or other mods is not found, and test with Thud loaded).
 - `mod-data` prototype `sky-platforms-types` with the defaults: unlock thresholds, weights, richness weights, pity N, per-type resource lists for foresight, and the richness multipliers.
 - Locale for type names, resource lists, and the foresight GUI.
@@ -124,7 +124,7 @@ Order of a roll
 
 1. Fill `storage.queue` to 2 entries (at `on_init` and after every pop).
 2. Pop on open. Take entry 1, pick a free slot from `storage.slot_of_type[type]` in ascending name order, write the entry into `storage.planets[slot]` (planet-lifecycle.md), then roll a new entry at the end. The queue is rolled with the counters as they are at that moment, so entry 2 sees entry 1 in `type_history`.
-3. Count a visit when the lifecycle sets `counting` (`Types.on_first_landing(force_index)` increments `storage.visits`). A change in the unlock set triggers a re-roll of queue entry 2 only if it has not been shown to the player (proposed: never re-roll, new types appear from the next roll on).
+3. Count a visit when the lifecycle sets `counting` (`Types.on_first_landing(force_index)` increments `storage.visits`). A change in the unlock set does not re-roll a queue entry (decided 2026-11-15). Entries already shown in the foresight list are not re-rolled, and new types appear from the next roll on.
 4. The pity counters update at roll time, not at open time, so foresight and the guarantee agree.
 
 Foresight GUI
@@ -239,7 +239,7 @@ Path to prod. Target release TBD. Migration yes (creates history tables). Change
 
 - [ ] With the setting off, new Nauvis-, Vulcanus- and Gleba-like planets have no biters, demolishers or pentapods.
 - [ ] Planets that already exist keep their enemies.
-- [ ] If demolishers still spawn, record it and add a removal pass (see Open numbers).
+- [ ] If demolishers still spawn, delete segmented units after chunk generation (decided fallback, see the Decided list). This needs a test.
 
 Path to prod. Target release TBD. Migration no. Changelog "Added a setting to turn enemies off."
 
@@ -259,15 +259,20 @@ In-game test steps:
 
 Changelog section (mod portal): see each slice.
 
+## Decided 2026-11-15
+
+1. Slot layout. 2 slots per type, 10 planet prototypes `sky-<type>-<n>`, all in `data.lua`. `LuaPlanet` has no writable attributes, and Fulgora's `lightning_properties` and Aquilo's `entities_require_heating` are prototype-only.
+2. Richness weights poor 30, normal 50, rich 20. Richness factors 0.5, 1.0 and 2.0. Needs a play test.
+3. Connection length 20000 for all slot connections. Players must design a reasonably fast platform, which steers them toward small lander ships (planet-lifecycle.md, statement 7).
+4. Generation. Generate chunks with radius 4 around the landing area, spread over 8 ticks.
+5. Foresight. Entries already shown in the foresight list are not re-rolled when a type unlocks.
+6. Demolisher fallback. If `no_enemies_mode` does not remove demolishers, delete segmented units after chunk generation. This needs a test.
+
 ## Open numbers
 
-1. Slots per type. TBD (proposed: 2). At most 2 planets are live, so 2 covers two planets of one type.
-2. Visit thresholds. TBD (proposed: 4 and 12). The design default. They are startup settings, so they can change per game.
-3. Weights. TBD (proposed: Nauvis-like 30, others 20). The design default. Nauvis-like is the most common as it is the safe type.
-4. Richness weights and multipliers. TBD (proposed: poor 30, normal 50, rich 20 with richness factor 0.5, 1.0, 2.0). The design gives the weights. The factors are a first guess that needs testing.
-5. Pity N. TBD (proposed: 6, 0 is off). The design default. Six keeps the rare types visible without making them certain.
-6. Uranium share. TBD (proposed: 50% with a pity at N). The design default.
-7. Re-roll when unlock thresholds change. TBD (proposed: no re-roll of shown entries). A shown preview that changes would break the foresight promise.
-8. Chunk radius generated at open. TBD (proposed: 4, 370 to 480 ms in the test, split over 8 ticks). It fits the landing area and keeps each tick short.
-9. Slot `distance` and `orientation` and connection `length`. TBD (proposed: length 5000). A short trip from the Drift.
-10. Demolisher removal if `no_enemies_mode` does not cover territories. TBD (proposed: delete segmented-unit entities after chunk generation, only if the test shows they spawn). Untested.
+1. Visit thresholds. TBD (proposed: 4 and 12). The design default. They are startup settings, so they can change per game.
+2. Weights. TBD (proposed: Nauvis-like 30, others 20). The design default. Nauvis-like is the most common as it is the safe type.
+3. Pity N. TBD (proposed: 6, 0 is off). The design default. Six keeps the rare types visible without making them certain.
+4. Uranium share. TBD (proposed: 50% with a pity at N). The design default.
+5. Slot `distance` and `orientation`. TBD.
+6. Whether `no_enemies_mode` removes Vulcanus demolishers (territory based). Not found. Needs the test in slice T8. Decided item 6 is the fallback.
