@@ -218,7 +218,7 @@ After it ships, a player sees a chat line when a platform lands and when it take
 - [ ] A removed or destroyed platform deletes its entry.
 - [ ] docs/spec/start-and-respawn.md and docs/spec/orbit-bootstrap.md are updated to store the ID (their own slices).
 
-Path to prod. Target release TBD. Migration yes (builds the registry on load). Test steps 1 to 4 below. Changelog "Added a platform registry that follows platforms through landing and take-off."
+Path to prod. Target release: 0.4.0. Migration yes (builds the registry on load). Test steps 1 to 4 below. Changelog "Added a platform registry that follows platforms through landing and take-off."
 
 Test steps. 1. Start a save with two platforms. 2. Land one with `emergency_land` through the console. 3. Check `storage.platforms` shows `landed` and a hub unit number. 4. Call take-off and confirm the same ID has a new `platform_index`.
 
@@ -231,7 +231,7 @@ After it ships, one Nauvis-like planet is available to travel to from the Drift 
 - [ ] The surface exists and chunks near the landing area generate over several ticks (no tick over 20 ms in the log).
 - [ ] Reloading a save keeps the state.
 
-Path to prod. Target release TBD. Migration no. Test steps. New game, open the starmap, travel from the Drift to the planet, check the surface exists. Changelog "A temporary planet now appears in orbit."
+Path to prod. Target release: 0.4.0. Migration no. Test steps. New game, open the starmap, travel from the Drift to the planet, check the surface exists. Changelog "A temporary planet now appears in orbit."
 
 ### L3. The first landing starts a countdown and the planet collapses
 
@@ -244,7 +244,7 @@ After it ships, landing on the open planet starts a 30 minute countdown. At zero
 - [ ] A landed platform is lost and a chat message names it.
 - [ ] With zero live planets after collapse, a new planet appears at once (statement 5).
 
-Path to prod. Target release TBD. Migration no. Test steps. Land, set the setting to 5 minutes, wait, confirm the above. Changelog "Planets collapse after the first landing plus a countdown."
+Path to prod. Target release: 0.4.0. Migration no. Test steps. Land, set the setting to 5 minutes, wait, confirm the above. Changelog "Planets collapse after the first landing plus a countdown."
 
 ### L4. Timer display and staged warnings
 
@@ -255,7 +255,7 @@ After it ships, every player sees the countdown in the top bar and gets warnings
 - [ ] The 45 s warning reads "automatic take-off at 45 s". The 26 s warning reads "too late: platforms without charge will be lost".
 - [ ] With a 2 minute countdown, the 2 min stage is skipped as later than the total.
 
-Path to prod. Target release TBD. Migration no. Changelog "Added the planet timer and warnings."
+Path to prod. Target release: 0.5.0. Migration no. Changelog "Added the planet timer and warnings."
 
 ### L5. Half-life brings the next planet, at most 2 live
 
@@ -265,7 +265,7 @@ After it ships, the second planet appears at half-life.
 - [ ] No third planet appears while 2 are live.
 - [ ] If no slot is free at half-life, nothing appears and nothing errors.
 
-Path to prod. Target release TBD. Migration no. Changelog "A second planet appears at half-life."
+Path to prod. Target release: 0.6.0. Migration no. Changelog "A second planet appears at half-life."
 
 ### L6. Automatic take-off for charged platforms
 
@@ -276,7 +276,7 @@ After it ships, platforms with a full damper charge lift off before the collapse
 - [ ] A platform whose charge fills between 2700 and 1560 ticks before zero starts take-off.
 - [ ] No surface is deleted while a take-off that started in time is in progress.
 
-Path to prod. Target release TBD. Migration no. Changelog "Charged platforms lift off automatically before a collapse."
+Path to prod. Target release: 0.5.0. Migration no. Changelog "Charged platforms lift off automatically before a collapse."
 
 ### L7. Easy mode
 
@@ -286,7 +286,7 @@ After it ships, a map setting makes every landed platform take off without loss.
 - [ ] `set_charge` is called before `take_off`.
 - [ ] Turning it off mid-game applies to the next auto take-off pass.
 
-Path to prod. Target release TBD. Migration no. Changelog "Added easy mode."
+Path to prod. Target release: 0.9.0. Migration no. Changelog "Added easy mode."
 
 ### L8. Skip scanner
 
@@ -297,7 +297,7 @@ After it ships, a player can skip an unwanted open planet.
 - [ ] Skipping a `counting` planet is refused with a message and no cost.
 - [ ] A circuit `sky-skip` signal triggers the same skip.
 
-Path to prod. Target release TBD. Migration no. Changelog "Added the planet skip scanner."
+Path to prod. Target release: 0.9.0. Migration no. Changelog "Added the planet skip scanner."
 
 ### L9. Circuit signals
 
@@ -306,7 +306,7 @@ After it ships, a timer building outputs the planet state.
 - [ ] `sky-time-left` and `sky-time-total` match the top bar to the second.
 - [ ] `sky-planet-state` shows 1, 2 or 3 as the planet changes.
 
-Path to prod. Target release TBD. Migration no. Changelog "Added planet timer circuit signals."
+Path to prod. Target release: 0.9.0. Migration no. Changelog "Added planet timer circuit signals."
 
 ### L10. Timer modifier hook
 
@@ -316,7 +316,7 @@ After it ships, other content can lengthen countdowns.
 - [ ] A countdown that starts after the call uses `base * force_mod * type_mod`. A running countdown does not change.
 - [ ] Modifiers persist in `storage` across save and load.
 
-Path to prod. Target release TBD. Migration no. Changelog "Added a hook for timer research."
+Path to prod. Target release: 0.9.0. Migration no. Changelog "Added a hook for timer research."
 
 ### L11. Block late landings
 
@@ -327,11 +327,11 @@ After it ships, a landing that starts in the last 90 s of a countdown shows a wa
 - [ ] Each platform's previous landing site is restored after the collapse, or when the countdown leaves the last 90 s.
 - [ ] Once Thud's cancellable pre-landing hook exists, the mod refuses the landing with it.
 
-Path to prod. Target release TBD. Migration no, unless a release after L1 has already shipped without `storage.saved_landing_sites`. Test steps. Start a countdown, wait until 90 s are left, send a platform to land, and confirm the warning and that Thud refuses the landing. Changelog "Added a warning and a block for landings in the last 90 seconds of a countdown."
+Path to prod. Target release: 0.5.0. Migration no, unless a release after L1 has already shipped without `storage.saved_landing_sites`. Test steps. Start a countdown, wait until 90 s are left, send a platform to land, and confirm the warning and that Thud refuses the landing. Changelog "Added a warning and a block for landings in the last 90 seconds of a countdown."
 
 ## Path to prod
 
-Target release: TBD
+Release plan (2026-11-15, planets first): 0.1.0 start in the Drift, spawn and respawn. 0.2.0 copper and stone crushing. 0.3.0 salvage thrusters. 0.4.0 L1, L2, L3, T1 (first planet loop). 0.5.0 L4, L6, L11 (warnings, automatic take-off, late landings). 0.6.0 L5, T2 (half-life, foresight). 0.7.0 T3, T4, T5 (gating, Vulcanus-, Fulgora-, Gleba-like). 0.8.0 T6, T7, T8 (Aquilo-like, pity, enemies). 0.9.0 L7, L8, L9, L10 (easy mode, skip scanner, circuit signals, timer hook). 0.10.0 corpse into the hub. 0.11.0 respawn picker.
 Save migration: yes for L1 (registry build), no for others, unless a later slice adds fields.
 
 Every release passes three checks. First, `emmylua_check` with the Factorio type library. Second, a headless `factorio --create` load with the mod and Thud. Third, the in-game self-test.

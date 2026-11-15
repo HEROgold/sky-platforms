@@ -176,7 +176,7 @@ After it ships, the planets that appear are Nauvis-like with poor, normal or ric
 - [ ] The starmap does not list Vulcanus, Fulgora, Gleba or Aquilo.
 - [ ] Surface creation stays under 15 ms and each chunk batch under 20 ms.
 
-Path to prod. Target release TBD. Migration no. Test steps. New game, check planets on three rolls in the console, compare resources, open the starmap. Changelog "Planets have a richness and sometimes uranium. Vanilla planets are hidden."
+Path to prod. Target release: 0.4.0. Migration no. Test steps. New game, check planets on three rolls in the console, compare resources, open the starmap. Changelog "Planets have a richness and sometimes uranium. Vanilla planets are hidden."
 
 ### T2. Foresight of the next two planets
 
@@ -187,7 +187,7 @@ After it ships, a player can open a window that shows the next two planets with 
 - [ ] The window shows the enemy flag and matches `sky-platforms-enemies`.
 - [ ] Reload keeps the queue and the seeds.
 
-Path to prod. Target release TBD. Migration yes (creates the queue on load). Changelog "Added a window that previews the next two planets."
+Path to prod. Target release: 0.6.0. Migration yes (creates the queue on load). Changelog "Added a window that previews the next two planets."
 
 ### T3. Visit gating and Vulcanus-like planets
 
@@ -198,7 +198,7 @@ After it ships, the player finds Nauvis-like planets for 4 visits, then Vulcanus
 - [ ] Vulcanus surface properties match vanilla (gravity 40, pressure 4000, planet.lua:47-48).
 - [ ] Weights are 30 and 20 over 200 rolls within tolerance.
 
-Path to prod. Target release TBD. Migration no. Changelog "Added Vulcanus-like planets."
+Path to prod. Target release: 0.7.0. Migration no. Changelog "Added Vulcanus-like planets."
 
 ### T4. Fulgora-like planets
 
@@ -207,7 +207,7 @@ Path to prod. Target release TBD. Migration no. Changelog "Added Vulcanus-like p
 - [ ] Surface properties match vanilla (pressure 800, gravity 8).
 - [ ] Heavy oil is available (source to confirm in the map gen, TBD).
 
-Path to prod. Target release TBD. Migration no. Changelog "Added Fulgora-like planets."
+Path to prod. Target release: 0.7.0. Migration no. Changelog "Added Fulgora-like planets."
 
 ### T5. Gleba-like planets
 
@@ -215,7 +215,7 @@ Path to prod. Target release TBD. Migration no. Changelog "Added Fulgora-like pl
 - [ ] Gleba plants grow and spoilage works as on Gleba.
 - [ ] Surface properties match vanilla (pressure 2000, gravity 20).
 
-Path to prod. Target release TBD. Migration no. Changelog "Added Gleba-like planets."
+Path to prod. Target release: 0.7.0. Migration no. Changelog "Added Gleba-like planets."
 
 ### T6. Aquilo-like planets
 
@@ -224,7 +224,7 @@ Path to prod. Target release TBD. Migration no. Changelog "Added Gleba-like plan
 - [ ] No Aquilo-like planet before 12 visits.
 - [ ] Surface properties match vanilla (pressure 300, gravity 15).
 
-Path to prod. Target release TBD. Migration no. Changelog "Added Aquilo-like planets."
+Path to prod. Target release: 0.8.0. Migration no. Changelog "Added Aquilo-like planets."
 
 ### T7. Pity rule
 
@@ -233,7 +233,7 @@ Path to prod. Target release TBD. Migration no. Changelog "Added Aquilo-like pla
 - [ ] N = 0 turns it off.
 - [ ] Foresight shows the guaranteed type.
 
-Path to prod. Target release TBD. Migration yes (creates history tables). Changelog "Added a pity rule for planet types."
+Path to prod. Target release: 0.8.0. Migration yes (creates history tables). Changelog "Added a pity rule for planet types."
 
 ### T8. Enemies setting
 
@@ -241,11 +241,11 @@ Path to prod. Target release TBD. Migration yes (creates history tables). Change
 - [ ] Planets that already exist keep their enemies.
 - [ ] If demolishers still spawn, delete segmented units after chunk generation (decided fallback, see the Decided list). This needs a test.
 
-Path to prod. Target release TBD. Migration no. Changelog "Added a setting to turn enemies off."
+Path to prod. Target release: 0.8.0. Migration no. Changelog "Added a setting to turn enemies off."
 
 ## Path to prod
 
-Target release: TBD
+Release plan (2026-11-15, planets first): 0.1.0 start in the Drift, spawn and respawn. 0.2.0 copper and stone crushing. 0.3.0 salvage thrusters. 0.4.0 L1, L2, L3, T1 (first planet loop). 0.5.0 L4, L6, L11 (warnings, automatic take-off, late landings). 0.6.0 L5, T2 (half-life, foresight). 0.7.0 T3, T4, T5 (gating, Vulcanus-, Fulgora-, Gleba-like). 0.8.0 T6, T7, T8 (Aquilo-like, pity, enemies). 0.9.0 L7, L8, L9, L10 (easy mode, skip scanner, circuit signals, timer hook). 0.10.0 corpse into the hub. 0.11.0 respawn picker.
 Save migration: yes for T2 and T7, no for others.
 
 Every release passes three checks. First, `emmylua_check` with the Factorio type library. Second, a headless `factorio --create` load with the mod and Thud. Third, the in-game self-test.
