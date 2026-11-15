@@ -196,6 +196,33 @@ local function check_techs(force)
   end
 end
 
+--- Finds an ingredient or product by name in a recipe prototype list.
+local function find_amount(list, name)
+  for _, entry in ipairs(list or {}) do
+    if entry.name == name then return entry end
+  end
+end
+
+local function check_crushing_recipe(force, name, chunk, product)
+  local recipe = force.recipes[name]
+  check(name .. " exists", recipe ~= nil and recipe.valid)
+  if not (recipe and recipe.valid) then return end
+  check(name .. " is enabled", recipe.enabled)
+  check(name .. " uses the crushing category", recipe.prototype.categories[1] == "crushing" and #recipe.prototype.categories == 1)
+  local ingredient = find_amount(recipe.ingredients, chunk)
+  check(name .. " takes 1 " .. chunk, ingredient ~= nil and ingredient.amount == 1)
+  local result = find_amount(recipe.products, product)
+  check(name .. " gives 6 " .. product, result ~= nil and result.amount == 6, result and result.amount or "nil")
+  local back = find_amount(recipe.products, chunk)
+  check(name .. " returns the chunk at 30%", back ~= nil and (back.independent_probability or back.probability) == 0.3,
+    back and (back.independent_probability or back.probability) or "nil")
+end
+
+local function check_crushing(force)
+  check_crushing_recipe(force, "sky-metallic-crushing-copper", "metallic-asteroid-chunk", "copper-ore")
+  check_crushing_recipe(force, "sky-oxide-crushing-stone", "oxide-asteroid-chunk", "stone")
+end
+
 --- Checks that need no player: the spawn search the mod would use.
 local function check_spawn_position()
   local pos = remote.call("sky-platforms", "home_platform_spawn_position", 1)
@@ -308,6 +335,7 @@ local steps = {
       if platform and not storage.test.furnace_started then
         start_furnace_check(platform)
       end
+      check_crushing(force)
       check_spawn_position()
     end)
   end,
