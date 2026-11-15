@@ -12,7 +12,7 @@ Researched 2026-11-15. The details and source links are in files 01 to 03. Sourc
 
 ## What players praised and punished
 
-- Platformer: the authors fixed launch softlocks within days, which won goodwill. The softlocks were missing stone, an ice and sulfur loop, and too little power. It also pruned vanilla techs, which players disliked. It kept handcrafting, so the start was not really bodiless.
+- Platformer: the authors fixed launch softlocks within days, which won goodwill. The softlocks were missing stone, an ice and sulfur loop, and too little power. It also pruned vanilla techs, which players disliked. Its code destroys the character at start (`control/init.lua:18-20`), but 01 reports handcrafting and a character GUI after a Nauvis visit. That conflict needs an in-game check (see 06-bodiless-start.md).
 - Warptorio: the timer creates good tension, but players hated a timer that starts silently, warps with no warning, and destroys builds. Staged alerts only came late, in 0.4.4.
 - VoidBlock: settings answered most feature requests. Its biggest bug thread was about landing on other planets.
 
