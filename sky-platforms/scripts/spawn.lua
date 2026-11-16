@@ -115,4 +115,40 @@ function spawn.give_armor(player)
   end
 end
 
+--- Choose where a player respawns: their choice, then the home platform, then the
+--- platform with the lowest index. Every candidate needs a hub.
+---@param player LuaPlayer
+---@return LuaSpacePlatform?
+function spawn.pick_respawn_platform(player)
+  local force = player.force --[[@as LuaForce]]
+  local function with_hub(platform)
+    return platform and platform.valid and platform.hub and platform.hub.valid and platform or nil
+  end
+  local platform = with_hub(registry.resolve(storage.respawn_choice[player.index]))
+    or with_hub(registry.resolve(storage.home_platform[force.index]))
+  if platform then
+    return platform
+  end
+  local all = {}
+  for _, candidate in pairs(force.platforms) do
+    if with_hub(candidate) then
+      all[#all + 1] = candidate
+    end
+  end
+  table.sort(all, function(a, b) return a.index < b.index end)
+  return all[1]
+end
+
+--- Move a freshly respawned player from the vanilla spawn onto a platform.
+--- Gives no items. Armor is only given on first spawn.
+---@param player LuaPlayer
+function spawn.relocate_respawn(player)
+  local platform = spawn.pick_respawn_platform(player)
+  if not platform then
+    player.print({ "sky-platforms.no-platform" })
+    return
+  end
+  spawn.place_on_platform(player, platform)
+end
+
 return spawn
