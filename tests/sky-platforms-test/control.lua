@@ -64,6 +64,20 @@ end
 local function check_unlocks(force)
   check("space platforms unlocked", force.is_space_platforms_unlocked())
   check("sky-drift unlocked", force.is_space_location_unlocked("sky-drift"))
+  local tech = prototypes.technology["sky-platform-foundation"]
+  check("foundation tech exists", tech ~= nil)
+  if tech then
+    local unlocks = false
+    for _, effect in pairs(tech.effects or {}) do
+      if effect.type == "unlock-recipe" and effect.recipe == "space-platform-foundation" then unlocks = true end
+    end
+    check("foundation tech unlocks the foundation recipe", unlocks)
+    local red_only = #tech.research_unit_ingredients == 1
+      and tech.research_unit_ingredients[1].name == "automation-science-pack"
+    check("foundation tech costs red science only", red_only,
+      tostring(tech.research_unit_count) .. " units")
+    check("foundation tech needs steel processing", tech.prerequisites["steel-processing"] ~= nil)
+  end
 end
 
 local function check_drift_solar()

@@ -31,3 +31,21 @@ drift.asteroid_spawn_definitions = {
 }
 
 data:extend({ drift })
+
+-- Space Age unlocks the foundation recipe with rocket-silo, which this mod never
+-- needs early. A cheap red-science tech unlocks it instead (decided 2026-11-16).
+data:extend({
+  {
+    type = "technology",
+    name = "sky-platform-foundation",
+    icon = "__space-age__/graphics/technology/space-platform.png",
+    icon_size = 256,
+    effects = { { type = "unlock-recipe", recipe = "space-platform-foundation" } },
+    prerequisites = { "steel-processing" },
+    unit = {
+      count = 50,
+      ingredients = { { "automation-science-pack", 1 } },
+      time = 15,
+    },
+  },
+})
