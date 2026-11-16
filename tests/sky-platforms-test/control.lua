@@ -30,7 +30,7 @@ end
 
 local KIT = {
   { "asteroid-collector", 4 }, { "crusher", 4 }, { "assembling-machine-1", 4 },
-  { "stone-furnace", 4 }, { "lab", 2 }, { "solar-panel", 20, true }, { "inserter", 40, true },
+  { "steel-furnace", 4 }, { "lab", 2 }, { "solar-panel", 20, true }, { "inserter", 40, true },
   { "transport-belt", 100, true }, { "space-platform-foundation", 180, true },
   { "thud-inertial-damper", 1 },
 }
@@ -58,6 +58,121 @@ local function check_platform_and_kit(force)
     check("hub holds " .. item[1], have >= want, have .. " of " .. want)
   end
   check("hub holds no mech-armor", hub.get_item_count("mech-armor") == 0)
+  check("hub holds no stone-furnace", hub.get_item_count("stone-furnace") == 0)
+end
+
+local function check_unlocks(force)
+  check("space platforms unlocked", force.is_space_platforms_unlocked())
+  check("sky-drift unlocked", force.is_space_location_unlocked("sky-drift"))
+end
+
+local function check_drift_solar()
+  local drift = prototypes.space_location["sky-drift"]
+  local nauvis = prototypes.space_location["nauvis"]
+  if not (drift and nauvis) then
+    check("drift solar equals nauvis orbit", false, "prototype missing")
+    return
+  end
+  check("drift solar equals nauvis orbit", drift.solar_power_in_space == nauvis.solar_power_in_space,
+    tostring(drift.solar_power_in_space) .. " vs " .. tostring(nauvis.solar_power_in_space))
+end
+
+--- Places a 2x2 entity on four foundation tiles. can_place_entity returns false here for any
+--- entity on the platform, so this tries create_entity, which checks collisions itself.
+local function place_on_foundation(platform, name)
+  local hub = platform.hub
+  local surface = platform.surface
+  if not (hub and hub.valid and surface and surface.valid) then return nil end
+  local function is_foundation(x, y)
+    local tile = surface.get_tile(x, y)
+    return tile ~= nil and tile.valid and tile.name == "space-platform-foundation"
+  end
+  local tiles = surface.find_tiles_filtered({ name = "space-platform-foundation", position = hub.position, radius = 14 })
+  for _, tile in ipairs(tiles) do
+    if tile.valid then
+      local x, y = tile.position.x, tile.position.y
+      if is_foundation(x + 1, y) and is_foundation(x, y + 1) and is_foundation(x + 1, y + 1) then
+        local entity = surface.create_entity({ name = name, position = { x = x + 1, y = y + 1 }, force = platform.force, raise_built = true })
+        if entity and entity.valid then
+          return entity
+        end
+      end
+    end
+  end
+end
+
+--- Starts the steel furnace check. The poll in on_nth_tick finishes it, so it also runs headless.
+local function start_furnace_check(platform)
+  local test = storage.test
+  test.furnace_started = true
+  local furnace = place_on_foundation(platform, "steel-furnace")
+  if not furnace then
+    check("steel furnace works on the platform", false, "could not place on foundation")
+    test.furnace_done = true
+    return
+  end
+  furnace.insert({ name = "carbon", count = 5 })
+  furnace.insert({ name = "iron-ore", count = 5 })
+  test.furnace = furnace
+  test.furnace_deadline = game.tick + 600
+end
+
+local function poll_furnace()
+  local test = storage.test
+  if not test or test.furnace_done or not test.furnace then return end
+  local furnace = test.furnace
+  if not furnace.valid then
+    check("steel furnace works on the platform", false, "entity vanished")
+    test.furnace_done = true
+    return
+  end
+  if furnace.status == defines.entity_status.working then
+    check("steel furnace works on the platform", true)
+    furnace.destroy()
+    test.furnace_done = true
+  elseif game.tick >= test.furnace_deadline then
+    check("steel furnace works on the platform", false, "status " .. tostring(furnace.status))
+    furnace.destroy()
+    test.furnace_done = true
+  end
+end
+
+--- Finds the center of a 3x3 block of empty-space tiles that touches foundation, and a foundation tile next to it.
+local function find_ghost_spot(platform)
+  local hub = platform.hub
+  local surface = platform.surface
+  if not (hub and hub.valid and surface and surface.valid) then return nil end
+  local function tile_name(x, y)
+    local tile = surface.get_tile(x, y)
+    return tile and tile.valid and tile.name or nil
+  end
+  local hx, hy = math.floor(hub.position.x), math.floor(hub.position.y)
+  for cy = hy - 14, hy + 14 do
+    for cx = hx - 14, hx + 14 do
+      local all_empty = true
+      for dy = -1, 1 do
+        for dx = -1, 1 do
+          if tile_name(cx + dx, cy + dy) ~= "empty-space" then all_empty = false end
+        end
+      end
+      if all_empty then
+        -- The tiles just outside the box on the left and right edges, rows -1 to 1.
+        for dy = -1, 1 do
+          for _, dx in ipairs({ -2, 2 }) do
+            if tile_name(cx + dx, cy + dy) == "space-platform-foundation" then
+              return { x = cx + 0.5, y = cy + 0.5 }, { x = cx + dx + 0.5, y = cy + dy + 0.5 }
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
+local function clear_ghosts(surface, area)
+  for _, ghost in ipairs(surface.find_entities_filtered({ area = area, type = { "entity-ghost", "tile-ghost" } })) do
+    if ghost.valid then ghost.destroy() end
+  end
 end
 
 local function check_techs(force)
@@ -73,6 +188,59 @@ local steps = {
       local force = game.forces["player"]
       check_platform_and_kit(force)
       check_techs(force)
+      check_unlocks(force)
+      check_drift_solar()
+      local platform = find_home_platform(force)
+      if platform and not storage.test.furnace_started then
+        start_furnace_check(platform)
+      end
+    end)
+  end,
+  function()
+    guarded("ghost placement", function()
+      local label = "player ghost-places a solar panel on empty space"
+      local player = game.get_player(storage.test.player)
+      local platform = find_home_platform(game.forces["player"])
+      if not (player and player.valid and platform) then
+        check(label, false, "no player or platform")
+        return
+      end
+      if player.surface ~= platform.surface then
+        check(label, false, "player is on " .. player.surface.name)
+        return
+      end
+      local spot, standing = find_ghost_spot(platform)
+      if not (spot and standing) then
+        check(label, false, "no empty 3x3 block next to foundation")
+        return
+      end
+      player.teleport(standing)
+      player.cursor_ghost = "solar-panel"
+      player.build_from_cursor({ position = spot, build_mode = defines.build_mode.forced })
+      storage.test.ghost_spot = spot
+    end)
+  end,
+  function()
+    guarded("ghost check", function()
+      local label = "player ghost-places a solar panel on empty space"
+      local spot = storage.test.ghost_spot
+      local player = game.get_player(storage.test.player)
+      if not (spot and player and player.valid) then return end
+      local surface = player.surface
+      local area = { { spot.x - 1.5, spot.y - 1.5 }, { spot.x + 1.5, spot.y + 1.5 } }
+      local panel_ghost = false
+      for _, ghost in ipairs(surface.find_entities_filtered({ area = area, type = "entity-ghost" })) do
+        if ghost.valid and ghost.ghost_name == "solar-panel" then panel_ghost = true end
+      end
+      local tile_ghosts = 0
+      for _, ghost in ipairs(surface.find_entities_filtered({ area = area, type = "tile-ghost" })) do
+        if ghost.valid and ghost.ghost_name == "space-platform-foundation" then tile_ghosts = tile_ghosts + 1 end
+      end
+      check(label, panel_ghost, string.format("entity-ghost solar-panel %s, foundation tile ghosts %d",
+        panel_ghost and "present" or "missing", tile_ghosts))
+      clear_ghosts(surface, area)
+      player.cursor_ghost = nil
+      player.clear_cursor()
     end)
   end,
 }
@@ -95,6 +263,8 @@ script.on_event(defines.events.on_player_created, function(event)
   storage.test.next_tick = game.tick + 60
 end)
 
+script.on_nth_tick(10, poll_furnace)
+
 script.on_nth_tick(STEP_TICKS, function()
   local test = storage.test
   if not test or test.done then return end
@@ -104,7 +274,7 @@ script.on_nth_tick(STEP_TICKS, function()
       test.warned = true
       out("SKIP player checks, no player has joined yet")
     end
-    if game.tick >= 300 and not test.ran_headless then
+    if game.tick >= 120 and not test.ran_headless then
       test.ran_headless = true
       steps[1]()
     end
@@ -113,6 +283,7 @@ script.on_nth_tick(STEP_TICKS, function()
   if game.tick < test.next_tick then return end
   local step = steps[test.step]
   if not step then
+    if not test.furnace_done then return end
     finish()
     return
   end

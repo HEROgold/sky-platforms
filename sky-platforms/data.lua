@@ -8,6 +8,8 @@ drift.gravity_pull = -10
 drift.distance = 5
 drift.orientation = 0.25
 drift.magnitude = 1.0
+-- solar-system-edge has very little sunlight. Use the Nauvis orbit value (300) so solar panels work.
+drift.solar_power_in_space = data.raw.planet["nauvis"].solar_power_in_space
 drift.asteroid_spawn_influence = 1
 
 -- Chunks only, in the Nauvis orbit ratio 3 : 2 : 1 metallic : carbonic : oxide.

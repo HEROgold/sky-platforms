@@ -26,4 +26,8 @@ script.on_configuration_changed(function()
     -- An existing save adds the mod: it keeps its progress and gets no kit.
     storage.bootstrap_done = true
   end
+  local force = game.forces["player"]
+  if force and force.valid then
+    bootstrap.unlock_space_travel(force)
+  end
 end)

@@ -17,7 +17,7 @@ local KIT = {
   { name = "asteroid-collector", count = 4 },
   { name = "crusher", count = 4 },
   { name = "assembling-machine-1", count = 4 },
-  { name = "stone-furnace", count = 4 },
+  { name = "steel-furnace", count = 4 },
   { name = "lab", count = 2 },
   { name = "solar-panel", count = 20, scaled = true },
   { name = "inserter", count = 40, scaled = true },
@@ -53,6 +53,18 @@ function bootstrap.set_start_research(force)
   end
 end
 
+--- The space-platform tech only unlocks these through a trigger that never runs here, so unlock them directly.
+--- Safe to call again on an existing save.
+---@param force LuaForce
+function bootstrap.unlock_space_travel(force)
+  if not force.is_space_platforms_unlocked() then
+    force.unlock_space_platforms()
+  end
+  if not force.is_space_location_unlocked("sky-drift") then
+    force.unlock_space_location("sky-drift")
+  end
+end
+
 --- Create the starting platform at the Drift and fill the hub. Returns the registry ID.
 ---@param force LuaForce
 ---@return integer?
@@ -84,6 +96,7 @@ function bootstrap.run(force)
   local id = registry.register(platform)
   storage.home_platform[force.index] = id
   bootstrap.set_start_research(force)
+  bootstrap.unlock_space_travel(force)
   storage.bootstrap_done = true
   local location = platform.space_location --[[@as {name: string}?]]
   log(string.format("[sky-platforms] home platform %d created at %s", id, tostring(location and location.name)))
