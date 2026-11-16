@@ -49,3 +49,37 @@ data:extend({
     },
   },
 })
+-- Copper and stone crushing, enabled from the start. Same category, time and chunk
+-- return as vanilla metallic-asteroid-crushing (2 s, 30% chance to get the chunk back).
+local function crushing(name, chunk_name, ore_name, ore_icon, order)
+  return {
+    type = "recipe",
+    name = name,
+    icons = {
+      { icon = "__space-age__/graphics/icons/" .. chunk_name .. ".png", icon_size = 64, scale = 0.5, shift = { -4, -4 } },
+      { icon = ore_icon, icon_size = 64, scale = 0.5, shift = { 6, 6 } },
+    },
+    categories = { "crushing" },
+    subgroup = "space-crushing",
+    order = order,
+    auto_recycle = false,
+    enabled = true,
+    ingredients = {
+      { type = "item", name = chunk_name, amount = 1, ignored_by_stats = 1 },
+    },
+    energy_required = 2,
+    results = {
+      { type = "item", name = ore_name, amount = 6 },
+      { type = "item", name = chunk_name, amount = 1, independent_probability = 0.3, ignored_by_stats = 1 },
+    },
+    allow_productivity = true,
+    allow_decomposition = false,
+  }
+end
+
+data:extend({
+  crushing("sky-metallic-crushing-copper", "metallic-asteroid-chunk", "copper-ore",
+    "__base__/graphics/icons/copper-ore.png", "b-a-d[sky-metallic-crushing-copper]"),
+  crushing("sky-oxide-crushing-stone", "oxide-asteroid-chunk", "stone",
+    "__base__/graphics/icons/stone.png", "b-a-e[sky-oxide-crushing-stone]"),
+})
