@@ -223,6 +223,55 @@ local function check_crushing(force)
   check_crushing_recipe(force, "sky-oxide-crushing-stone", "oxide-asteroid-chunk", "stone")
 end
 
+local function check_salvage_thruster()
+  local name = "sky-salvage-thruster"
+  check(name .. " item exists", prototypes.item[name] ~= nil)
+  local recipe = prototypes.recipe[name]
+  check(name .. " recipe exists", recipe ~= nil)
+  if recipe then
+    local want = { ["steel-plate"] = 10, ["electronic-circuit"] = 10, ["iron-gear-wheel"] = 10, ["pipe"] = 5 }
+    local ok = #recipe.ingredients == 4
+    for _, ingredient in ipairs(recipe.ingredients) do
+      if want[ingredient.name] ~= ingredient.amount then ok = false end
+    end
+    check(name .. " recipe has the right ingredients", ok)
+  end
+  local mine = prototypes.entity[name]
+  local vanilla = prototypes.entity["thruster"]
+  check(name .. " entity exists", mine ~= nil)
+  if not (mine and vanilla) then return end
+  local mp, vp = mine.max_performance, vanilla.max_performance
+  check(name .. " has max_performance", mp ~= nil and vp ~= nil)
+  if mp and vp then
+    check(name .. " max effectivity is 0.25", mp.effectivity == 0.25, tostring(mp.effectivity))
+    check(name .. " max fluid_usage equals vanilla", mp.fluid_usage == vp.fluid_usage,
+      mp.fluid_usage .. " vs " .. vp.fluid_usage)
+  end
+  local result = mine.mineable_properties and mine.mineable_properties.products
+  check(name .. " mines into itself", result ~= nil and result[1] ~= nil and result[1].name == name)
+  local item = prototypes.item[name]
+  check(name .. " item places the entity", item ~= nil and item.place_result ~= nil and item.place_result.name == name)
+  local tech = prototypes.technology["space-platform-thruster"]
+  check("thruster tech exists", tech ~= nil)
+  if not tech then return end
+  check("thruster tech costs 200 units", tech.research_unit_count == 200, tech.research_unit_count)
+  check("thruster tech takes 30 s per unit", tech.research_unit_energy == 30 * 60, tech.research_unit_energy)
+  local ingredients = tech.research_unit_ingredients
+  check("thruster tech uses only red science",
+    #ingredients == 1 and ingredients[1].name == "automation-science-pack" and ingredients[1].amount == 1)
+  local count = 0
+  for _ in pairs(tech.prerequisites) do count = count + 1 end
+  check("thruster tech needs steel-processing and electronics",
+    count == 2 and tech.prerequisites["steel-processing"] ~= nil and tech.prerequisites["electronics"] ~= nil, count)
+  local unlocked = {}
+  for _, effect in ipairs(tech.effects) do
+    if effect.type == "unlock-recipe" then unlocked[effect.recipe] = true end
+  end
+  for _, recipe_name in ipairs({ "sky-salvage-thruster", "chemical-plant", "thruster", "thruster-fuel", "thruster-oxidizer", "ice-melting" }) do
+    check("thruster tech unlocks " .. recipe_name, unlocked[recipe_name] == true)
+  end
+end
+
 --- Checks that need no player: the spawn search the mod would use.
 local function check_spawn_position()
   local pos = remote.call("sky-platforms", "home_platform_spawn_position", 1)
@@ -336,6 +385,7 @@ local steps = {
         start_furnace_check(platform)
       end
       check_crushing(force)
+      check_salvage_thruster()
       check_spawn_position()
     end)
   end,
