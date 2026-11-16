@@ -1,0 +1,9 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.1.0
+Date: 2026-11-15
+  Features:
+    - Added the Platform foundation tech: 50 red science unlocks the foundation recipe.
+    - New games start on a space platform orbiting the Drift, with a starting kit.
+    - Space platforms and the Drift are unlocked at the start, so the star map and foundation placement work.
+    - The Drift gives the same solar power as the Nauvis orbit.
+    - Steel furnaces run on space platforms. The kit has 4 steel furnaces instead of 4 stone furnaces.

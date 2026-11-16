@@ -1,0 +1,9 @@
+{
+  "name": "sky-platforms",
+  "version": "0.1.0",
+  "title": "Sky Platforms",
+  "author": "HEROgold",
+  "factorio_version": "2.1",
+  "description": "Start on a space platform orbiting the Drift, with a starting kit, and respawn on the platform.",
+  "dependencies": ["base >= 2.1.0", "space-age >= 2.1.21", "Thud >= 2.2.0"]
+}
