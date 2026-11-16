@@ -243,8 +243,9 @@ local function check_salvage_thruster()
   local mp, vp = mine.max_performance, vanilla.max_performance
   check(name .. " has max_performance", mp ~= nil and vp ~= nil)
   if mp and vp then
-    check(name .. " fluid_usage is 50% of vanilla", mp.fluid_usage == vp.fluid_usage * 0.5,
-      mp.fluid_usage .. " of " .. vp.fluid_usage)
+    check(name .. " max effectivity is 0.25", mp.effectivity == 0.25, tostring(mp.effectivity))
+    check(name .. " max fluid_usage equals vanilla", mp.fluid_usage == vp.fluid_usage,
+      mp.fluid_usage .. " vs " .. vp.fluid_usage)
   end
   local result = mine.mineable_properties and mine.mineable_properties.products
   check(name .. " mines into itself", result ~= nil and result[1] ~= nil and result[1].name == name)

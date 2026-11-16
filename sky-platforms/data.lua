@@ -84,16 +84,16 @@ data:extend({
     "__base__/graphics/icons/stone.png", "b-a-e[sky-oxide-crushing-stone]"),
 })
 
--- Salvage thruster: the vanilla thruster at half its max performance, built from red-science items.
--- max_performance.fluid_usage is halved (2 to 1 per tick). It sets the fluid burned at full
--- throttle and so the thrust. fluid_volume (0.8) and effectivity (0.51) stay as vanilla, and
--- min_performance stays as vanilla, so the efficiency curve keeps its shape.
+-- Salvage thruster: the vanilla thruster, built from red-science items, at 25% efficiency at full burn.
+-- max_performance.effectivity is 0.25 instead of the vanilla 0.51. fluid_usage (max 2, min 0.1) and
+-- fluid_volume stay vanilla, and so does min_performance (fluid_usage 0.1, effectivity 1), so it
+-- burns as much fuel as a vanilla thruster and gives less thrust at full throttle.
 local salvage_entity = table.deepcopy(data.raw["thruster"]["thruster"])
 salvage_entity.name = "sky-salvage-thruster"
 local minable = assert(salvage_entity.minable)
 minable.result = "sky-salvage-thruster"
 local performance = assert(salvage_entity.max_performance)
-performance.fluid_usage = performance.fluid_usage * 0.5
+performance.effectivity = 0.25
 
 local salvage_item = table.deepcopy(data.raw["item"]["thruster"])
 salvage_item.name = "sky-salvage-thruster"
